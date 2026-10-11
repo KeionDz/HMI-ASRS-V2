@@ -19,7 +19,6 @@
   overflow: hidden;
   color: var(--text);
   background: var(--bg);
-  border-inline: 2px solid #72cdd0;
   text-align: left;
   font-size: 12px;
   transition: background-color 180ms ease, color 180ms ease;
