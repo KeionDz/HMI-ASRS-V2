@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Activity,
   Archive,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import AgvView from './components/AgvView'
 import AssetsView from './components/AssetsView'
+import ScissorLiftView, { type ScissorLiftData } from './components/ScissorLiftView'
 import mheLogoDark from './logos/mhe-logo-darkmode.png'
 import mheLogoLight from './logos/mhe-logo-lightmode.png'
 import ewaLogo from './logos/ewa.png'
@@ -64,17 +65,42 @@ const shiftActivity = [
   { time: '10:06:12', message: 'Asset gateway connection restored.', failed: false },
 ]
 
+const initialLiftData: ScissorLiftData = {
+  unitId: 'UNIT-01',
+  mode: 'MANUAL CONTROL',
+  online: true,
+  maintenanceDue: false,
+  emergencyStopped: false,
+  currentLevelId: 0,
+  positionLabel: 'Home — Transfer Bay',
+  capacityKg: 1200,
+  heartbeat: '00:00:00',
+  levels: [
+    { id: 0, name: 'Home — Transfer Bay' },
+    { id: 1, name: 'Level 1 — Storeroom' },
+  ],
+}
+
+const liftTravelDurationMs = 2000
+
 function App() {
   const [clockTime, setClockTime] = useState(() => new Date())
   const [activeSection, setActiveSection] = useState('Events')
   const [selectedEvent, setSelectedEvent] = useState<(typeof events)[number] | null>(null)
   const [dialog, setDialog] = useState('')
   const [isDayMode, setIsDayMode] = useState(false)
+  const [liftLevel, setLiftLevel] = useState(initialLiftData.currentLevelId)
+  const [liftTargetLevel, setLiftTargetLevel] = useState<number | null>(null)
+  const [liftEmergencyStopped, setLiftEmergencyStopped] = useState(false)
+  const liftMoveTimer = useRef<number | null>(null)
   const currentContent = sectionCopy[activeSection]
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockTime(new Date()), 1000)
-    return () => window.clearInterval(timer)
+    return () => {
+      window.clearInterval(timer)
+      if (liftMoveTimer.current !== null) window.clearTimeout(liftMoveTimer.current)
+    }
   }, [])
 
   const clockFormatter = new Intl.DateTimeFormat('en-US', {
@@ -89,6 +115,37 @@ function App() {
     month: 'short',
     day: 'numeric',
   })
+  const heartbeatFormatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Manila',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+  const liftData: ScissorLiftData = {
+    ...initialLiftData,
+    emergencyStopped: liftEmergencyStopped,
+    currentLevelId: liftLevel,
+    positionLabel: initialLiftData.levels.find((level) => level.id === liftLevel)?.name ?? 'Unknown',
+    heartbeat: heartbeatFormatter.format(clockTime),
+  }
+
+  const moveLiftToLevel = (levelId: number) => {
+    if (liftTargetLevel !== null || levelId === liftLevel) return
+    setLiftTargetLevel(levelId)
+    liftMoveTimer.current = window.setTimeout(() => {
+      setLiftLevel(levelId)
+      setLiftTargetLevel(null)
+      liftMoveTimer.current = null
+    }, liftTravelDurationMs)
+  }
+
+  const emergencyStopLift = () => {
+    if (liftMoveTimer.current !== null) window.clearTimeout(liftMoveTimer.current)
+    liftMoveTimer.current = null
+    setLiftTargetLevel(null)
+    setLiftEmergencyStopped(true)
+  }
 
   return (
     <main className={`dashboard${isDayMode ? ' day-mode' : ''}`}>
@@ -128,7 +185,18 @@ function App() {
       <div className="screen-host" hidden={activeSection !== 'AGV'}>
         <AgvView />
       </div>
-      {activeSection !== 'Assets' && activeSection !== 'AGV' && <section className="workspace">
+      <div className="screen-host" hidden={activeSection !== 'Scissor Lift'}>
+        <ScissorLiftView
+          data={liftData}
+          commandPending={liftTargetLevel !== null}
+          movingToLevelId={liftTargetLevel}
+          onMoveToLevel={moveLiftToLevel}
+          onRunCalibration={() => setDialog('Scissor Lift Calibration')}
+          onEmergencyStop={emergencyStopLift}
+          onResume={() => setLiftEmergencyStopped(false)}
+        />
+      </div>
+      {activeSection !== 'Assets' && activeSection !== 'AGV' && activeSection !== 'Scissor Lift' && <section className="workspace">
         <aside className="event-rail">
           <div className="panel-heading"><span className="eyebrow">NEXT 14 DAYS</span><h1>Upcoming Events</h1></div>
           <div className="event-list">
