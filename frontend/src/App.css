@@ -95,6 +95,88 @@
 .workspace { display: grid; grid-template-columns: 20% minmax(300px, 1fr) 19%; min-height: 0; flex: 1 1 auto; }
 .screen-host { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; }
 .screen-host[hidden] { display: none; }
+.lift-workspace { display: grid; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(0, 1fr) clamp(330px, 21vw, 400px); overflow: hidden; background: #080f1b; }
+.lift-stage { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(230px, 1fr) auto auto; gap: 20px; padding: 44px 32px 32px; overflow: hidden; }
+.lift-stage-heading { display: flex; flex-direction: column; align-items: center; gap: 7px; text-align: center; }
+.lift-stage-heading h1 { margin: 0; color: #f0f8ff; font-size: 22px; font-weight: 700; line-height: 1.35; }
+.lift-stage-heading .lift-moving-status { color: var(--cyan); }
+.lift-stage-heading strong { color: var(--amber); font-size: 12px; font-weight: 500; }
+.lift-stage-heading .lift-emergency-status { color: var(--red); text-transform: uppercase; }
+.lift-visual { display: grid; grid-template-columns: 86px 150px 86px; align-items: center; justify-content: center; gap: 24px; }
+.lift-direction { display: flex; width: 86px; height: 86px; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 18px; font: 10px 'Cascadia Code', Consolas, monospace; cursor: pointer; transition: filter 140ms ease, transform 140ms ease, opacity 140ms ease; }
+.lift-direction:not(:disabled):hover { filter: brightness(1.25); }
+.lift-direction:not(:disabled):active { transform: scale(.97); }
+.lift-up { color: var(--green); background: #0e2a1a; border: 2px solid #1f6a40; }
+.lift-down { color: var(--amber); background: #1a1a0e; border: 2px solid #594412; }
+.lift-direction:disabled { opacity: .3; cursor: not-allowed; }
+.lift-shaft { position: relative; display: flex; height: min(300px, 42vh); align-items: center; justify-content: center; }
+.shaft-track { position: relative; width: 50px; height: 100%; background: #111c2d; border: 2px solid #1a2940; border-radius: 10px; }
+.shaft-line { position: absolute; top: 10px; bottom: 10px; left: 50%; width: 2px; background: #1d314a; transform: translateX(-50%); }
+.lift-platform { position: absolute; left: 5px; display: grid; width: 36px; height: 54px; place-items: center; color: var(--cyan); background: #0b302d; border: 2px solid #00a995; border-radius: 9px; box-shadow: 0 0 14px #00c9b533; transition: bottom 260ms ease, transform 260ms ease; }
+.lift-platform.moving { transition-duration: 2s; }
+.lift-level-label { position: absolute; left: -84px; display: flex; width: 80px; align-items: center; justify-content: flex-end; gap: 7px; color: #526d88; font: 9px 'Cascadia Code', Consolas, monospace; }
+.lift-level-label i { width: 14px; height: 2px; background: currentColor; }
+.lift-level-top { top: 6px; }
+.lift-level-home { bottom: 6px; }
+.lift-level-label.current { color: var(--green); text-shadow: 0 0 9px #13c87877; }
+.lift-level-label.current i { box-shadow: 0 0 8px #13c878aa; }
+.lift-safety-controls { display: grid; width: min(100%, 560px); grid-template-columns: repeat(2, minmax(0, 1fr)); justify-self: center; gap: 16px; }
+.lift-safety-controls button { display: flex; min-width: 0; min-height: 58px; align-items: center; justify-content: center; gap: 9px; padding: 0 14px; border-radius: 10px; font-size: 12px; font-weight: 750; letter-spacing: .4px; cursor: pointer; transition: filter 140ms ease, transform 140ms ease, opacity 140ms ease; }
+.lift-safety-controls button:hover:not(:disabled) { filter: brightness(1.18); }
+.lift-safety-controls button:active:not(:disabled) { transform: scale(.985); }
+.lift-safety-controls button:disabled { opacity: .35; cursor: not-allowed; }
+.lift-emergency-button { color: #fff1f2; background: #a51d2d; border: 2px solid #ef4d53; box-shadow: 0 0 15px #ef4d5326; }
+.lift-resume-button { color: #dcfff3; background: #11633f; border: 2px solid #19a864; box-shadow: 0 0 15px #13c87826; }
+.lift-readings { display: grid; width: min(100%, 560px); grid-template-columns: repeat(4, minmax(0, 1fr)); justify-self: center; gap: 12px; margin: 0; }
+.lift-confirm-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 28px; background: #030914cc; backdrop-filter: blur(5px); }
+.lift-confirm-dialog { width: min(100%, 460px); padding: 28px; color: #dce8f4; background: #121e31; border: 1px solid #304867; border-radius: 18px; box-shadow: 0 24px 80px #000a; animation: panel-in 160ms ease-out; }
+.lift-confirm-dialog header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.lift-confirm-dialog header > button { display: grid; width: 44px; height: 44px; place-items: center; color: #91a8c1; background: #1a2a42; border: 1px solid #2a405f; border-radius: 10px; cursor: pointer; }
+.lift-confirm-icon { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 14px; }
+.lift-confirm-icon.stop { color: #ff7479; background: #42151d; border: 1px solid #87323d; }
+.lift-confirm-icon.resume { color: #51dda0; background: #103625; border: 1px solid #24724b; }
+.lift-confirm-dialog h2 { margin: 0 0 10px; color: #f0f8ff; font-size: 22px; }
+.lift-confirm-dialog p { margin: 0; color: #91a8c1; font-size: 14px; line-height: 1.65; }
+.lift-confirm-actions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 12px; margin-top: 28px; }
+.lift-confirm-actions button { min-height: 54px; padding: 0 16px; border-radius: 11px; font-size: 13px; font-weight: 750; cursor: pointer; }
+.lift-confirm-cancel { color: #c5d4e3; background: #1a2a42; border: 1px solid #304867; }
+.lift-confirm-submit.stop { color: #fff; background: #a51d2d; border: 2px solid #ef4d53; }
+.lift-confirm-submit.resume { color: #fff; background: #11633f; border: 2px solid #19a864; }
+.lift-readings > div { display: flex; min-width: 0; min-height: 60px; flex-direction: column; justify-content: center; gap: 7px; padding: 0 14px; overflow: hidden; background: #17243a; border: 1px solid #20324f; border-radius: 10px; }
+.lift-readings dt { color: #5b7591; font: 8px 'Cascadia Code', Consolas, monospace; letter-spacing: .5px; }
+.lift-readings dd { max-width: 100%; margin: 0; overflow: hidden; color: #b9cadb; font: 600 11px 'Cascadia Code', Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.lift-readings .reading-online { color: var(--green); }
+.lift-readings .reading-offline { color: var(--red); }
+.lift-readings .reading-moving { color: var(--cyan); }
+.lift-control-panel { min-width: 0; overflow-y: auto; background: #0c1524; border-left: 1px solid var(--line); scrollbar-color: #34465d transparent; scrollbar-width: thin; }
+.lift-control-heading { display: flex; min-height: 82px; flex-direction: column; justify-content: center; gap: 7px; padding: 0 24px; border-bottom: 1px solid var(--line); }
+.lift-control-heading h2 { margin: 0; color: #f0f8ff; font-size: 18px; font-weight: 700; }
+.lift-control-content { display: flex; flex-direction: column; gap: 14px; padding: 24px; }
+.lift-card,
+.lift-health-card { overflow: hidden; background: #17243a; border: 1px solid #20324f; border-radius: 13px; }
+.lift-card { padding: 21px 22px 18px; }
+.lift-card h3,
+.lift-health-card h3 { margin: 0; color: #f0f8ff; font-size: 14px; font-weight: 700; }
+.lift-card > p { margin: 7px 0 14px; color: #7891ad; font-size: 11px; line-height: 1.5; }
+.lift-level-options { display: grid; gap: 8px; }
+.lift-level-options button { display: grid; min-height: 58px; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 0 15px; color: #c8d6e4; background: #101c2d; border: 1px solid #20324f; border-radius: 10px; text-align: left; cursor: pointer; }
+.lift-level-options button:hover:not(:disabled) { border-color: #3f607f; }
+.lift-level-options button > span { display: grid; width: 36px; height: 36px; place-items: center; color: #69839e; background: #16243a; border: 1px solid #213552; border-radius: 8px; font: 11px 'Cascadia Code', Consolas, monospace; }
+.lift-level-options button strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.lift-level-options button small { padding: 5px 8px; color: var(--green); background: #0e3025; border-radius: 4px; font: 8px 'Cascadia Code', Consolas, monospace; letter-spacing: .7px; }
+.lift-level-options button.current { color: var(--cyan); background: #123641; border-color: #176b68; opacity: 1; cursor: default; }
+.lift-level-options button.current > span { color: var(--cyan); background: #0c3b39; border-color: #12625d; }
+.calibration-card > p { min-height: 34px; }
+.calibration-button { display: flex; width: 100%; min-height: 60px; align-items: center; justify-content: center; gap: 9px; color: #edf8ff; background: #146899; border: 1px solid #2385b7; border-radius: 10px; font-size: 14px; font-weight: 650; cursor: pointer; }
+.calibration-button:hover:not(:disabled) { background: #197baa; }
+.calibration-button:disabled { opacity: .45; cursor: not-allowed; }
+.lift-health-card h3 { padding: 16px 22px; border-bottom: 1px solid #253852; }
+.lift-health-row { display: flex; min-height: 46px; align-items: center; justify-content: space-between; padding: 0 22px; color: #b9c9da; font-size: 12px; }
+.lift-health-row > span { display: flex; align-items: center; gap: 11px; }
+.lift-health-row i { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px #13c87866; }
+.lift-health-row b { padding: 5px 9px; color: var(--green); background: #0e3025; border-radius: 4px; font: 8px 'Cascadia Code', Consolas, monospace; letter-spacing: .7px; }
+.lift-health-row.stopped i { background: var(--red); box-shadow: 0 0 8px #ef4d5366; }
+.lift-health-row.stopped b { color: #ff858b; background: #3b141a; }
 .assets-workspace { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; overflow: hidden; background: #0a1220; }
 .gateway-strip { display: grid; min-height: 68px; flex: 0 0 68px; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #0c1524; border-bottom: 1px solid var(--line); }
 .gateway-card { display: flex; min-width: 0; align-items: center; gap: 14px; padding: 0 23px; border-right: 1px solid var(--line); }
@@ -325,6 +407,19 @@
 .day-mode .date-tile, .day-mode .metric-card, .day-mode .recent-log { background: #e2ebf1; }
 .day-mode .workflow-hints span, .day-mode .event-workflow button { background: #e5edf3; color: #45647f; }
 .day-mode .agv-workspace { background: #e8eef2; }
+.day-mode .lift-workspace { background: #e8eef2; }
+.day-mode .lift-stage-heading h1,
+.day-mode .lift-control-heading h2,
+.day-mode .lift-card h3,
+.day-mode .lift-health-card h3 { color: #203346; }
+.day-mode .lift-control-panel { background: #edf3f7; }
+.day-mode .lift-card,
+.day-mode .lift-health-card,
+.day-mode .lift-readings > div { background: #e2ebf1; }
+.day-mode .lift-level-options button { color: #304a60; background: #edf3f7; }
+.day-mode .lift-level-options button.current { color: #007c72; background: #d7efec; }
+.day-mode .lift-emergency-button { color: #fff; background: #b72332; }
+.day-mode .lift-resume-button { color: #fff; background: #147649; }
 .day-mode .assets-workspace { background: #e8eef2; }
 .day-mode .gateway-strip { background: #edf3f7; }
 .day-mode .gateway-info strong { color: #203346; }
@@ -346,6 +441,28 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .dashboard { font-size: 15px; }
   .workspace { grid-template-columns: 20% minmax(300px, 1fr) 20%; }
   .agv-workspace { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) clamp(340px, 20vw, 390px); }
+  .lift-stage { padding-top: 84px; padding-bottom: 58px; }
+  .lift-stage-heading { gap: 8px; }
+  .lift-stage-heading h1 { font-size: 26px; }
+  .lift-stage-heading strong { font-size: 14px; }
+  .lift-visual { grid-template-columns: 100px 180px 100px; gap: 26px; }
+  .lift-direction { width: 100px; height: 100px; gap: 7px; border-radius: 20px; font-size: 11px; }
+  .lift-shaft { height: min(320px, 39vh); }
+  .lift-level-label { left: -104px; width: 100px; font-size: 10px; }
+  .lift-readings { width: min(100%, 560px); gap: 14px; }
+  .lift-readings > div { min-height: 66px; }
+  .lift-readings dt { font-size: 9px; }
+  .lift-readings dd { font-size: 13px; }
+  .lift-control-content { gap: 14px; padding: 24px; }
+  .lift-card { padding: 21px 22px 18px; }
+  .lift-card h3 { font-size: 15px; }
+  .lift-card > p { font-size: 12px; }
+  .lift-level-options button { min-height: 64px; }
+  .lift-level-options button strong { font-size: 13px; }
+  .calibration-button { min-height: 68px; font-size: 15px; }
+  .lift-safety-controls button { min-height: 64px; font-size: 13px; }
+  .lift-health-card h3 { font-size: 14px; }
+  .lift-health-row { min-height: 48px; font-size: 13px; }
   .topbar { height: 80px; flex-basis: 80px; gap: 24px; padding: 0 34px; }
   .brand { gap: 15px; }
   .brand-mark { width: 58px; height: 44px; flex-basis: 58px; }
@@ -522,6 +639,11 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .footer-metric { min-width: 85px; flex: 1 1 13%; }
   .footer-action { min-width: 120px; height: 54px; flex: 1 1 20%; border-top: 1px solid var(--line); }
   .agv-workspace { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-y: auto; }
+  .lift-workspace { grid-template-columns: minmax(0, 1fr) 310px; overflow-y: auto; }
+  .lift-stage { min-height: 620px; padding: 42px 16px 35px; }
+  .lift-visual { grid-template-columns: 78px 135px 78px; gap: 13px; }
+  .lift-direction { width: 78px; height: 78px; }
+  .lift-control-panel { overflow: visible; }
   .assets-workspace { overflow: auto; }
   .robot-panel { min-height: 390px; }
   .dispatch-sidebar { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
@@ -566,6 +688,16 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   .footer-action:nth-last-child(2) { border-left: 1px solid var(--line); }
   .footer-brand { min-height: 28px; }
   .agv-workspace { display: flex; flex-direction: column; overflow: visible; }
+  .lift-workspace { display: flex; flex: 1 0 auto; flex-direction: column; overflow: visible; }
+  .lift-stage { min-height: 580px; flex: 0 0 580px; padding: 34px 10px 28px; }
+  .lift-stage-heading h1 { font-size: 19px; }
+  .lift-visual { grid-template-columns: 70px 125px 70px; gap: 8px; }
+  .lift-direction { width: 70px; height: 70px; border-radius: 15px; }
+  .lift-shaft { height: 265px; }
+  .lift-level-label { left: -66px; width: 63px; font-size: 7px; }
+  .lift-readings { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lift-control-panel { border-top: 1px solid var(--line); border-left: 0; }
+  .lift-control-content { padding: 14px; }
   .assets-workspace { min-height: 520px; flex: 1 0 520px; overflow: auto; }
   .gateway-strip { min-width: 660px; }
   .gateway-card { padding: 0 14px; }
