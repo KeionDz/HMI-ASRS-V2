@@ -20,6 +20,10 @@ import {
 import AgvView from './components/AgvView'
 import AssetsView from './components/AssetsView'
 import EventsView from './components/EventsView'
+import ScheduleView, {
+  type NewScheduleTask,
+  type ScheduleTask,
+} from './components/ScheduleView'
 import ScissorLiftView, { type ScissorLiftData } from './components/ScissorLiftView'
 import StorageView from './components/StorageView'
 import mheLogoDark from './logos/mhe-logo-darkmode.png'
@@ -198,6 +202,33 @@ const initialLiftData: ScissorLiftData = {
 
 const liftTravelDurationMs = 2000
 
+const initialScheduleTasks: ScheduleTask[] = [
+  {
+    id: 'SCH-001',
+    title: 'Nightly AGV Maintenance Run',
+    scheduledAt: '2026-07-05T23:00:00+08:00',
+    status: 'pending',
+  },
+  {
+    id: 'SCH-002',
+    title: 'Return to Home Position',
+    scheduledAt: '2026-07-06T02:00:00+08:00',
+    status: 'pending',
+  },
+  {
+    id: 'SCH-003',
+    title: 'Scissor Lift Calibration',
+    scheduledAt: '2026-07-04T05:00:00+08:00',
+    status: 'done',
+  },
+]
+
+const scheduleRoutineTitles: Record<NewScheduleTask['routine'], string> = {
+  maintenance: 'Nightly AGV Maintenance Run',
+  home: 'Return to Home Position',
+  calibration: 'Scissor Lift Calibration',
+}
+
 function App() {
   const [clockTime, setClockTime] = useState(() => new Date())
   const [activeSection, setActiveSection] = useState('Events')
@@ -209,6 +240,7 @@ function App() {
   const [liftLevel, setLiftLevel] = useState(initialLiftData.currentLevelId)
   const [liftTargetLevel, setLiftTargetLevel] = useState<number | null>(null)
   const [liftEmergencyStopped, setLiftEmergencyStopped] = useState(false)
+  const [scheduleTasks, setScheduleTasks] = useState(initialScheduleTasks)
   const liftMoveTimer = useRef<number | null>(null)
   const currentContent = sectionCopy[activeSection]
 
@@ -263,6 +295,26 @@ function App() {
     liftMoveTimer.current = null
     setLiftTargetLevel(null)
     setLiftEmergencyStopped(true)
+  }
+
+  const executeScheduleTask = (taskId: string) => {
+    setScheduleTasks((tasks) =>
+      tasks.map((task) =>
+        task.id === taskId ? { ...task, status: 'done' } : task,
+      ),
+    )
+  }
+
+  const addScheduleTask = ({ routine, scheduledAt }: NewScheduleTask) => {
+    setScheduleTasks((tasks) => [
+      ...tasks,
+      {
+        id: `SCH-${String(tasks.length + 1).padStart(3, '0')}`,
+        title: scheduleRoutineTitles[routine],
+        scheduledAt,
+        status: 'pending',
+      },
+    ])
   }
 
   return (
@@ -399,11 +451,20 @@ function App() {
         <StorageView />
       </div>
 
+      <div className="screen-host" hidden={activeSection !== 'Schedule'}>
+        <ScheduleView
+          tasks={scheduleTasks}
+          onExecuteTask={executeScheduleTask}
+          onAddTask={addScheduleTask}
+        />
+      </div>
+
       {/* EXISTING WORKSPACE FOR OTHER SECTIONS */}
       {activeSection !== 'Assets' &&
         activeSection !== 'AGV' &&
         activeSection !== 'Events' &&
         activeSection !== 'Storage' &&
+        activeSection !== 'Schedule' &&
         activeSection !== 'Scissor Lift' && (
           <section className="workspace">
             {/* EVENT SIDEBAR */}
