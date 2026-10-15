@@ -1,14 +1,11 @@
 import express from "express";
 import apiRoutes from "./routes/index.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
 app.use(express.json());
 
-// Main API routes
-app.use("/api", apiRoutes);
-
-// Optional root endpoint
 app.get("/", (_request, response) => {
   response.json({
     message: "Hotel ASRS HMI Backend API",
@@ -16,9 +13,14 @@ app.get("/", (_request, response) => {
   });
 });
 
-// Preserve the existing health endpoint
 app.get("/health", (_request, response) => {
-  response.json({ status: "ok" });
+  response.json({
+    status: "ok",
+  });
 });
+
+app.use("/api", apiRoutes);
+
+app.use(errorHandler);
 
 export default app;
