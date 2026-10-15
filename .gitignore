@@ -33,3 +33,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+
+!backend/src/modules/logs/
+!backend/src/modules/logs/**

@@ -1,3 +1,4 @@
+
 {
   "name": "backend",
   "version": "1.0.0",
@@ -5,13 +6,16 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "migrate:up": "node --env-file=../.env ./node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir src/db/migrations",
+    "migrate:down": "node --env-file=../.env ./node_modules/node-pg-migrate/bin/node-pg-migrate down --migrations-dir src/db/migrations"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "dotenv": "^18.0.8",
     "express": "^5.2.1",
     "pg": "^8.23.1"
   },
@@ -19,6 +23,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
     "@types/pg": "^8.23.1",
+    "node-pg-migrate": "^9.0.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
