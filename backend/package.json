@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "test": "tsx --test src/modules/logs/logs.service.test.ts",
     "start": "node dist/server.js",
     "migrate:up": "node --env-file=../.env ./node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir src/db/migrations",
-    "migrate:down": "node --env-file=../.env ./node_modules/node-pg-migrate/bin/node-pg-migrate down --migrations-dir src/db/migrations"
+    "migrate:down": "node --env-file=../.env ./node_modules/node-pg-migrate/bin/node-pg-migrate down --migrations-dir src/db/migrations",
+    "seed:logs": "tsx src/db/seeds/logs.seed.ts"
   },
   "keywords": [],
   "author": "",
