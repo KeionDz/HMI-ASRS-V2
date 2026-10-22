@@ -1,13 +1,17 @@
 import { pool } from "../db/pool.js";
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
 
-export type LogCategory =
-  | "audit"
-  | "process"
-  | "device"
-  | "ingestion"
-  | "system";
+export const LOG_CATEGORIES = [
+  "audit",
+  "process",
+  "device",
+  "ingestion",
+  "system",
+] as const;
+
+export type LogLevel = (typeof LOG_LEVELS)[number];
+export type LogCategory = (typeof LOG_CATEGORIES)[number];
 
 export interface LogInput {
   level: LogLevel;
