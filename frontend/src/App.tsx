@@ -10,6 +10,7 @@ import {
   Clock3,
   Layers3,
   Moon,
+  ScrollText,
   Settings,
   Sun,
   Wifi,
@@ -18,8 +19,10 @@ import {
 } from 'lucide-react'
 
 import AgvView from './components/AgvView'
+import AdminView from './components/AdminView'
 import AssetsView from './components/AssetsView'
 import EventsView from './components/EventsView'
+import LogsView from './components/LogsView'
 import ScheduleView, {
   type NewScheduleTask,
   type ScheduleTask,
@@ -232,6 +235,7 @@ const scheduleRoutineTitles: Record<NewScheduleTask['routine'], string> = {
 function App() {
   const [clockTime, setClockTime] = useState(() => new Date())
   const [activeSection, setActiveSection] = useState('Events')
+  const [systemScreen, setSystemScreen] = useState<'dashboard' | 'admin' | 'logs'>('dashboard')
   const [selectedEvent, setSelectedEvent] = useState<
     (typeof events)[number] | null
   >(null)
@@ -370,11 +374,29 @@ function App() {
           <button
             className="icon-button"
             type="button"
-            onClick={() => setDialog('System Settings')}
-            aria-label="System settings"
-            title="System settings"
+            onClick={() => {
+              setDialog('')
+              setSystemScreen((screen) => screen === 'admin' ? 'dashboard' : 'admin')
+            }}
+            aria-label="Admin settings"
+            title="Admin settings"
+            aria-pressed={systemScreen === 'admin'}
           >
             <Settings size={16} />
+          </button>
+
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => {
+              setDialog('')
+              setSystemScreen((screen) => screen === 'logs' ? 'dashboard' : 'logs')
+            }}
+            aria-label="Open logs and debug"
+            title="Logs and debug"
+            aria-pressed={systemScreen === 'logs'}
+          >
+            <ScrollText size={16} />
           </button>
 
           <button
@@ -389,6 +411,13 @@ function App() {
         </div>
       </header>
 
+      <div className="system-screen-host" hidden={systemScreen !== 'admin'}>
+        <AdminView onClose={() => setSystemScreen('dashboard')} />
+      </div>
+      <div className="system-screen-host" hidden={systemScreen !== 'logs'}>
+        <LogsView onClose={() => setSystemScreen('dashboard')} />
+      </div>
+      <div className="dashboard-body" hidden={systemScreen !== 'dashboard'}>
       {/* MAIN NAVIGATION */}
       <nav
         className="main-nav"
@@ -865,6 +894,7 @@ function App() {
           )}
         </div>
       )}
+      </div>
     </main>
   )
 }
