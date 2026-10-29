@@ -1,9 +1,11 @@
-
+import { updateLiftHeartbeat } from "./scissor-lift.repository.js";
 import { HttpError } from "../../shared/errors.js";
 import { log } from "../../shared/logger.js";
 import {
   getLiftState,
   updateLiftState,
+  markLiftHeartbeatMissed,
+  clearLiftHeartbeatAlert,
 } from "./scissor-lift.repository.js";
 import type {
   LiftDirection,
@@ -115,4 +117,69 @@ export async function resumeLift(
   });
 
   return updated;
+}
+
+
+
+export async function receiveLiftHeartbeat(): Promise<ScissorLiftState> {
+  const recovered = await clearLiftHeartbeatAlert();
+
+  const state = await updateLiftHeartbeat();
+
+  if (recovered) {
+    await log({
+      level: "info",
+      category: "device",
+      source: "scissor-lift",
+      actor: "system",
+      message: "Scissor Lift heartbeat restored",
+      details: {
+        lastHeartbeat: state.lastHeartbeat,
+        simulation: true,
+      },
+    });
+  }
+
+  return state;
+}
+
+
+
+
+const HEARTBEAT_TIMEOUT_MS = 30_000;
+
+export async function checkLiftHeartbeat(): Promise<{
+  online: boolean;
+  lastHeartbeat: string | null;
+}> {
+  const current = await getLiftState();
+
+  const online =
+    current.lastHeartbeat !== null &&
+    Date.now() - new Date(current.lastHeartbeat).getTime() <=
+      HEARTBEAT_TIMEOUT_MS;
+
+  if (!online) {
+    const newlyMissed = await markLiftHeartbeatMissed();
+
+    if (newlyMissed) {
+      await log({
+        level: "warn",
+        category: "device",
+        source: "scissor-lift",
+        actor: "system",
+        message: "Scissor Lift heartbeat missed",
+        details: {
+          lastHeartbeat: current.lastHeartbeat,
+          timeoutMs: HEARTBEAT_TIMEOUT_MS,
+          simulation: true,
+        },
+      });
+    }
+  }
+
+  return {
+    online,
+    lastHeartbeat: current.lastHeartbeat,
+  };
 }

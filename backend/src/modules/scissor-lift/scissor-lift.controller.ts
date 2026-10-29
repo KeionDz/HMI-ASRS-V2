@@ -6,6 +6,8 @@ import {
   moveLift,
   stopLift,
   resumeLift,
+  receiveLiftHeartbeat,
+  checkLiftHeartbeat,
 } from "./scissor-lift.service.js";
 
 export async function getLiftStatus(
@@ -66,6 +68,34 @@ export async function resumeLiftController(
   try {
     const state = await resumeLift("operator");
     response.json(state);
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+export async function liftHeartbeatController(
+  _request: Request,
+  response: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const state = await receiveLiftHeartbeat();
+    response.json(state);
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+export async function checkLiftHeartbeatController(
+  _request: Request,
+  response: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const result = await checkLiftHeartbeat();
+    response.json(result);
   } catch (error) {
     next(error);
   }

@@ -66,3 +66,60 @@ export async function updateLiftState(
 
   return mapRow(result.rows[0]);
 }
+
+
+export async function updateLiftHeartbeat(): Promise<ScissorLiftState> {
+  const result = await pool.query<LiftRow>(
+    `
+      UPDATE scissor_lift_state
+      SET last_heartbeat = NOW(),
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `,
+    ["lift-1"],
+  );
+
+  if (!result.rows[0]) {
+    throw new Error("Scissor Lift state not found");
+  }
+
+  return mapRow(result.rows[0]);
+}
+
+
+export async function markLiftHeartbeatMissed(): Promise<boolean> {
+  const result = await pool.query(
+    `
+      UPDATE scissor_lift_state
+      SET heartbeat_alert_active = TRUE,
+          updated_at = NOW()
+      WHERE id = $1
+        AND heartbeat_alert_active = FALSE
+        AND (
+          last_heartbeat IS NULL
+          OR last_heartbeat < NOW() - INTERVAL '30 seconds'
+        )
+      RETURNING id
+    `,
+    ["lift-1"],
+  );
+
+  return (result.rowCount ?? 0) > 0;
+}
+
+export async function clearLiftHeartbeatAlert(): Promise<boolean> {
+  const result = await pool.query(
+    `
+      UPDATE scissor_lift_state
+      SET heartbeat_alert_active = FALSE,
+          updated_at = NOW()
+      WHERE id = $1
+        AND heartbeat_alert_active = TRUE
+      RETURNING id
+    `,
+    ["lift-1"],
+  );
+
+  return (result.rowCount ?? 0) > 0;
+}
