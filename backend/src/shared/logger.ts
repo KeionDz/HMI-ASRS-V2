@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg";
 import { pool } from "../db/pool.js";
 
 export const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
@@ -24,8 +25,13 @@ export interface LogInput {
   details?: Record<string, unknown>;
 }
 
-export async function log(entry: LogInput): Promise<void> {
-  await pool.query(
+export async function log(
+  entry: LogInput,
+  client?: PoolClient,
+): Promise<void> {
+  const db = client ?? pool;
+
+  await db.query(
     `
       INSERT INTO logs (
         level,
