@@ -1,5 +1,10 @@
 import { Router } from "express";
-
+import { assetEventsController, assetSummaryController, getAssetController, ingestAssetController, listAssetsController, registerAssetController } from "./assets.controller.js";
 const router = Router();
-
+router.get("/", listAssetsController);
+router.get("/summary", assetSummaryController);
+router.post("/", registerAssetController);
+router.post("/simulate", ingestAssetController);
+router.get("/:id/events", assetEventsController);
+router.get("/:id", getAssetController);
 export default router;
