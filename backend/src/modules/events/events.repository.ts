@@ -3,12 +3,16 @@ import { pool } from "../../db/pool.js";
 import { HttpError } from "../../shared/errors.js";
 import { log } from "../../shared/logger.js";
 import {
+  validateChecklistEdit,
   validatePalletAssignment,
   validatePalletRemoval,
 } from "./events.rules.js";
 import type {
   AssignmentEvent,
   AssignmentPallet,
+  ChecklistInventoryItem,
+  ChecklistSource,
+  EventChecklistItem,
   EventListItem,
   PalletAssignment,
 } from "./events.types.js";
@@ -172,6 +176,261 @@ export async function removePalletAssignmentTransaction(
 
     await client.query("COMMIT");
     return { palletId, eventId: null };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function addMissingTemplateChecklistItems(
+  client: PoolClient,
+  eventId: string,
+): Promise<void> {
+  await client.query(
+    `
+      INSERT INTO event_checklist_items (
+        event_id,
+        inventory_item_id,
+        required_quantity,
+        source
+      )
+      SELECT
+        e.id,
+        eti.inventory_item_id,
+        eti.default_quantity,
+        'template'
+      FROM events e
+      JOIN event_type_items eti ON eti.event_type_id = e.event_type_id
+      WHERE e.id = $1
+      ON CONFLICT (event_id, inventory_item_id) DO NOTHING
+    `,
+    [eventId],
+  );
+}
+
+async function findChecklistItems(
+  client: PoolClient,
+  eventId: string,
+  inventoryItemId?: number,
+): Promise<EventChecklistItem[]> {
+  const values: unknown[] = [eventId];
+  const itemFilter = inventoryItemId === undefined
+    ? ""
+    : `AND eci.inventory_item_id = $${values.push(inventoryItemId)}`;
+
+  const result = await client.query<EventChecklistItem>(
+    `
+      SELECT
+        eci.inventory_item_id AS "inventoryItemId",
+        ii.name,
+        eci.required_quantity AS "requiredQuantity",
+        COALESCE(SUM(pc.quantity), 0)::integer AS "palletQuantity",
+        GREATEST(
+          eci.required_quantity - COALESCE(SUM(pc.quantity), 0),
+          0
+        )::integer AS "remainingQuantity",
+        eci.source,
+        eci.is_overridden AS overridden
+      FROM event_checklist_items eci
+      JOIN inventory_items ii ON ii.id = eci.inventory_item_id
+      LEFT JOIN pallets p ON p.event_id = eci.event_id
+      LEFT JOIN pallet_contents pc
+        ON pc.pallet_id = p.id
+        AND pc.inventory_item_id = eci.inventory_item_id
+      WHERE eci.event_id = $1
+        ${itemFilter}
+      GROUP BY eci.event_id, eci.inventory_item_id, ii.name
+      ORDER BY ii.name, eci.inventory_item_id
+    `,
+    values,
+  );
+
+  return result.rows;
+}
+
+export async function findEventChecklist(
+  eventId: string,
+): Promise<EventChecklistItem[]> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    await findEventForAssignment(client, eventId);
+    await addMissingTemplateChecklistItems(client, eventId);
+    const items = await findChecklistItems(client, eventId);
+    await client.query("COMMIT");
+    return items;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function findChecklistInventoryItem(
+  client: PoolClient,
+  eventId: string,
+  inventoryItemId: number,
+): Promise<ChecklistInventoryItem> {
+  const result = await client.query<ChecklistInventoryItem>(
+    `
+      SELECT
+        ii.id,
+        EXISTS (
+          SELECT 1
+          FROM events e
+          JOIN event_type_items eti ON eti.event_type_id = e.event_type_id
+          WHERE e.id = $1
+            AND eti.inventory_item_id = ii.id
+        ) AS "templateItem",
+        (
+          SELECT eti.default_quantity
+          FROM events e
+          JOIN event_type_items eti ON eti.event_type_id = e.event_type_id
+          WHERE e.id = $1
+            AND eti.inventory_item_id = ii.id
+        ) AS "defaultQuantity"
+      FROM inventory_items ii
+      WHERE ii.id = $2
+    `,
+    [eventId, inventoryItemId],
+  );
+  const item = result.rows[0];
+
+  if (!item) throw new HttpError(404, "inventory item not found");
+  return item;
+}
+
+export async function saveChecklistItemTransaction(
+  eventId: string,
+  inventoryItemId: number,
+  requiredQuantity: number,
+  actor: string,
+): Promise<EventChecklistItem> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    const event = await findEventForAssignment(client, eventId);
+    validateChecklistEdit(event);
+    const inventoryItem = await findChecklistInventoryItem(
+      client,
+      eventId,
+      inventoryItemId,
+    );
+    const source: ChecklistSource = inventoryItem.templateItem
+      ? "template"
+      : "event";
+
+    await client.query(
+      `
+        INSERT INTO event_checklist_items (
+          event_id,
+          inventory_item_id,
+          required_quantity,
+          source,
+          is_overridden
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (event_id, inventory_item_id)
+        DO UPDATE SET
+          required_quantity = EXCLUDED.required_quantity,
+          is_overridden = EXCLUDED.is_overridden,
+          updated_at = CURRENT_TIMESTAMP
+      `,
+      [
+        eventId,
+        inventoryItemId,
+        requiredQuantity,
+        source,
+        inventoryItem.templateItem &&
+          requiredQuantity !== inventoryItem.defaultQuantity,
+      ],
+    );
+
+    await log(
+      {
+        level: "info",
+        category: "audit",
+        source: "events",
+        actor,
+        eventId,
+        message: "Event checklist item saved",
+        details: { inventoryItemId, requiredQuantity, source },
+      },
+      client,
+    );
+
+    const item = (await findChecklistItems(
+      client,
+      eventId,
+      inventoryItemId,
+    ))[0];
+    if (!item) throw new Error("Checklist item was not saved");
+
+    await client.query("COMMIT");
+    return item;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function removeChecklistItemTransaction(
+  eventId: string,
+  inventoryItemId: number,
+  actor: string,
+): Promise<void> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    const event = await findEventForAssignment(client, eventId);
+    validateChecklistEdit(event);
+
+    const result = await client.query<{ source: ChecklistSource }>(
+      `
+        SELECT source
+        FROM event_checklist_items
+        WHERE event_id = $1 AND inventory_item_id = $2
+        FOR UPDATE
+      `,
+      [eventId, inventoryItemId],
+    );
+    const item = result.rows[0];
+
+    if (!item) throw new HttpError(404, "checklist item not found");
+    if (item.source === "template") {
+      throw new HttpError(409, "template checklist items cannot be removed");
+    }
+
+    await client.query(
+      `
+        DELETE FROM event_checklist_items
+        WHERE event_id = $1 AND inventory_item_id = $2
+      `,
+      [eventId, inventoryItemId],
+    );
+
+    await log(
+      {
+        level: "info",
+        category: "audit",
+        source: "events",
+        actor,
+        eventId,
+        message: "Event checklist item removed",
+        details: { inventoryItemId },
+      },
+      client,
+    );
+
+    await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

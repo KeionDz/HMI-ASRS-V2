@@ -28,3 +28,21 @@ export interface AssignmentPallet {
   eventId: string | null;
   locked: boolean;
 }
+
+export type ChecklistSource = "template" | "event";
+
+export interface EventChecklistItem {
+  inventoryItemId: number;
+  name: string;
+  requiredQuantity: number;
+  palletQuantity: number;
+  remainingQuantity: number;
+  source: ChecklistSource;
+  overridden: boolean;
+}
+
+export interface ChecklistInventoryItem {
+  id: number;
+  templateItem: boolean;
+  defaultQuantity: number | null;
+}
