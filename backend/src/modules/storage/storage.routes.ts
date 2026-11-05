@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  parseAdminOverride,
   parseInventoryItemId,
   parsePalletContentQuantity,
   parseStorageFilters,
@@ -7,8 +8,10 @@ import {
 } from "./storage.schema.js";
 import {
   listStorageSlots,
+  lockPallet,
   removePalletContent,
   savePalletContent,
+  unlockPallet,
 } from "./storage.service.js";
 
 const router = Router();
@@ -16,6 +19,23 @@ const router = Router();
 router.get("/", async (request, response) => {
   const filters = parseStorageFilters(request.query);
   response.json({ data: await listStorageSlots(filters) });
+});
+
+router.post("/:palletId/lock", async (request, response) => {
+  const palletId = parseStorageIdentifier(
+    request.params.palletId,
+    "palletId",
+  );
+  response.json({ data: await lockPallet(palletId) });
+});
+
+router.delete("/:palletId/lock", async (request, response) => {
+  const palletId = parseStorageIdentifier(
+    request.params.palletId,
+    "palletId",
+  );
+  const adminOverride = parseAdminOverride(request.query.adminOverride);
+  response.json({ data: await unlockPallet(palletId, adminOverride) });
 });
 
 router.put(

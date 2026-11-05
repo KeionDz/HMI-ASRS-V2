@@ -23,7 +23,13 @@ test("pallet content input rejects invalid values", () => {
 
 test("locked pallets reject content changes", () => {
   assert.doesNotThrow(() =>
-    validatePalletContentEdit({ id: "L1-R1-S1", eventId: null, locked: false }),
+    validatePalletContentEdit({
+      id: "L1-R1-S1",
+      eventId: null,
+      locked: false,
+      lockedBy: null,
+      lockedAt: null,
+    }),
   );
   assert.throws(
     () =>
@@ -31,6 +37,8 @@ test("locked pallets reject content changes", () => {
         id: "L1-R1-S1",
         eventId: "EVT-001",
         locked: true,
+        lockedBy: "operator",
+        lockedAt: new Date("2026-11-05T00:00:00.000Z"),
       }),
     (error: unknown) =>
       error instanceof HttpError && error.statusCode === 409,

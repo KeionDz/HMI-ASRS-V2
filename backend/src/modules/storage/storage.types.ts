@@ -24,6 +24,8 @@ export interface StorageSlot {
   eventId: string | null;
   description: string;
   locked: boolean;
+  lockedBy: string | null;
+  lockedAt: Date | null;
   contents: PalletContent[];
 }
 
@@ -36,8 +38,17 @@ export interface StoragePalletState {
   id: string;
   eventId: string | null;
   locked: boolean;
+  lockedBy: string | null;
+  lockedAt: Date | null;
 }
 
 export interface PalletContentUpdate extends PalletContent {
   palletId: string;
+}
+
+export interface PalletLockState {
+  palletId: string;
+  locked: boolean;
+  lockedBy: string | null;
+  lockedAt: Date | null;
 }
