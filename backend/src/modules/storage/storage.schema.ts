@@ -42,3 +42,50 @@ export function parseStorageFilters(query: QueryParameters): StorageFilters {
     status: statusText as StorageStatus | undefined,
   };
 }
+
+export function parseStorageIdentifier(value: string, name: string): string {
+  const identifier = value.trim();
+
+  if (identifier.length === 0 || identifier.length > 50) {
+    throw new HttpError(400, `${name} must contain 1 to 50 characters`);
+  }
+
+  if (!/^[A-Za-z0-9._-]+$/.test(identifier)) {
+    throw new HttpError(
+      400,
+      `${name} may only contain letters, numbers, dots, underscores, and hyphens`,
+    );
+  }
+
+  return identifier;
+}
+
+export function parseInventoryItemId(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new HttpError(400, "inventoryItemId must be a positive integer");
+  }
+
+  const id = Number(value);
+  if (id < 1 || id > 2_147_483_647) {
+    throw new HttpError(400, "inventoryItemId must be a positive integer");
+  }
+
+  return id;
+}
+
+export function parsePalletContentQuantity(body: unknown): number {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new HttpError(400, "request body must be a JSON object");
+  }
+
+  const quantity = (body as Record<string, unknown>).quantity;
+  if (
+    !Number.isInteger(quantity) ||
+    (quantity as number) < 1 ||
+    (quantity as number) > 2_147_483_647
+  ) {
+    throw new HttpError(400, "quantity must be a positive integer");
+  }
+
+  return quantity as number;
+}
