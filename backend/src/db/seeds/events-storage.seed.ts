@@ -26,6 +26,67 @@ async function seedEventsAndStorage(client: PoolClient): Promise<void> {
   `);
 
   await client.query(`
+    INSERT INTO event_type_items (
+      event_type_id,
+      inventory_item_id,
+      default_quantity
+    )
+    VALUES
+      (
+        (SELECT id FROM event_types WHERE name = 'Gala'),
+        (SELECT id FROM inventory_items WHERE name = 'Banquet table'),
+        15
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Gala'),
+        (SELECT id FROM inventory_items WHERE name = 'Stacking chair'),
+        120
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Gala'),
+        (SELECT id FROM inventory_items WHERE name = 'Linen cart'),
+        2
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Corporate'),
+        (SELECT id FROM inventory_items WHERE name = 'Banquet table'),
+        10
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Corporate'),
+        (SELECT id FROM inventory_items WHERE name = 'Stacking chair'),
+        80
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Corporate'),
+        (SELECT id FROM inventory_items WHERE name = 'AV equipment'),
+        4
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Wedding'),
+        (SELECT id FROM inventory_items WHERE name = 'Banquet table'),
+        18
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Wedding'),
+        (SELECT id FROM inventory_items WHERE name = 'Stacking chair'),
+        150
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Wedding'),
+        (SELECT id FROM inventory_items WHERE name = 'Linen cart'),
+        3
+      ),
+      (
+        (SELECT id FROM event_types WHERE name = 'Wedding'),
+        (SELECT id FROM inventory_items WHERE name = 'Stage riser'),
+        4
+      )
+    ON CONFLICT (event_type_id, inventory_item_id) DO UPDATE
+    SET default_quantity = EXCLUDED.default_quantity
+  `);
+
+  await client.query(`
     INSERT INTO events (
       id, title, event_date, event_time, venue, floor,
       guest_count, event_type_id, status
