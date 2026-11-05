@@ -89,3 +89,10 @@ export function parsePalletContentQuantity(body: unknown): number {
 
   return quantity as number;
 }
+
+export function parseAdminOverride(value: unknown): boolean {
+  if (value === undefined || value === "false") return false;
+  if (value === "true") return true;
+
+  throw new HttpError(400, "adminOverride must be true or false");
+}

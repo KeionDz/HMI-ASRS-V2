@@ -1,10 +1,13 @@
 import {
   findStorageSlots,
+  lockPalletTransaction,
   removePalletContentTransaction,
   savePalletContentTransaction,
+  unlockPalletTransaction,
 } from "./storage.repository.js";
 import type {
   PalletContentUpdate,
+  PalletLockState,
   StorageFilters,
   StorageSlot,
 } from "./storage.types.js";
@@ -35,4 +38,19 @@ export async function removePalletContent(
   actor = "operator",
 ): Promise<void> {
   return removePalletContentTransaction(palletId, inventoryItemId, actor);
+}
+
+export async function lockPallet(
+  palletId: string,
+  actor = "operator",
+): Promise<PalletLockState> {
+  return lockPalletTransaction(palletId, actor);
+}
+
+export async function unlockPallet(
+  palletId: string,
+  adminOverride: boolean,
+  actor = "operator",
+): Promise<PalletLockState> {
+  return unlockPalletTransaction(palletId, actor, adminOverride);
 }

@@ -2,9 +2,13 @@ import type { PoolClient } from "pg";
 import { pool } from "../../db/pool.js";
 import { HttpError } from "../../shared/errors.js";
 import { log } from "../../shared/logger.js";
-import { validatePalletContentEdit } from "./storage.rules.js";
+import {
+  validatePalletContentEdit,
+  validatePalletUnlock,
+} from "./storage.rules.js";
 import type {
   PalletContentUpdate,
+  PalletLockState,
   StorageFilters,
   StoragePalletState,
   StorageSlot,
@@ -43,6 +47,8 @@ export async function findStorageSlots(
         p.event_id AS "eventId",
         p.description,
         p.is_locked AS locked,
+        p.locked_by AS "lockedBy",
+        p.locked_at AS "lockedAt",
         COALESCE(
           JSONB_AGG(
             JSONB_BUILD_OBJECT(
@@ -67,7 +73,7 @@ export async function findStorageSlots(
   return result.rows;
 }
 
-async function findPalletForContentUpdate(
+async function findPalletForUpdate(
   client: PoolClient,
   palletId: string,
 ): Promise<StoragePalletState> {
@@ -76,7 +82,9 @@ async function findPalletForContentUpdate(
       SELECT
         id,
         event_id AS "eventId",
-        is_locked AS locked
+        is_locked AS locked,
+        locked_by AS "lockedBy",
+        locked_at AS "lockedAt"
       FROM pallets
       WHERE id = $1
       FOR UPDATE
@@ -137,7 +145,7 @@ export async function savePalletContentTransaction(
 
   try {
     await client.query("BEGIN");
-    const pallet = await findPalletForContentUpdate(client, palletId);
+    const pallet = await findPalletForUpdate(client, palletId);
     validatePalletContentEdit(pallet);
     await ensureInventoryItemExists(client, inventoryItemId);
 
@@ -189,7 +197,7 @@ export async function removePalletContentTransaction(
 
   try {
     await client.query("BEGIN");
-    const pallet = await findPalletForContentUpdate(client, palletId);
+    const pallet = await findPalletForUpdate(client, palletId);
     validatePalletContentEdit(pallet);
 
     const result = await client.query(
@@ -217,6 +225,143 @@ export async function removePalletContentTransaction(
     }
 
     await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function toPalletLockState(pallet: StoragePalletState): PalletLockState {
+  return {
+    palletId: pallet.id,
+    locked: pallet.locked,
+    lockedBy: pallet.lockedBy,
+    lockedAt: pallet.lockedAt,
+  };
+}
+
+export async function lockPalletTransaction(
+  palletId: string,
+  actor: string,
+): Promise<PalletLockState> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    const pallet = await findPalletForUpdate(client, palletId);
+
+    if (pallet.locked) {
+      await client.query("COMMIT");
+      return toPalletLockState(pallet);
+    }
+
+    const result = await client.query<StoragePalletState>(
+      `
+        UPDATE pallets
+        SET
+          is_locked = TRUE,
+          locked_by = $1,
+          locked_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING
+          id,
+          event_id AS "eventId",
+          is_locked AS locked,
+          locked_by AS "lockedBy",
+          locked_at AS "lockedAt"
+      `,
+      [actor, palletId],
+    );
+    const locked = result.rows[0];
+    if (!locked) throw new Error("Pallet was not locked");
+
+    await log(
+      {
+        level: "info",
+        category: "audit",
+        source: "storage",
+        actor,
+        palletId,
+        eventId: locked.eventId ?? undefined,
+        message: "Pallet locked",
+        details: { lockedBy: actor, lockedAt: locked.lockedAt },
+      },
+      client,
+    );
+
+    await client.query("COMMIT");
+    return toPalletLockState(locked);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function unlockPalletTransaction(
+  palletId: string,
+  actor: string,
+  adminOverride: boolean,
+): Promise<PalletLockState> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    const pallet = await findPalletForUpdate(client, palletId);
+    validatePalletUnlock(pallet, actor, adminOverride);
+
+    if (!pallet.locked) {
+      await client.query("COMMIT");
+      return toPalletLockState(pallet);
+    }
+
+    const result = await client.query<StoragePalletState>(
+      `
+        UPDATE pallets
+        SET
+          is_locked = FALSE,
+          locked_by = NULL,
+          locked_at = NULL,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING
+          id,
+          event_id AS "eventId",
+          is_locked AS locked,
+          locked_by AS "lockedBy",
+          locked_at AS "lockedAt"
+      `,
+      [palletId],
+    );
+    const unlocked = result.rows[0];
+    if (!unlocked) throw new Error("Pallet was not unlocked");
+
+    await log(
+      {
+        level: adminOverride ? "warn" : "info",
+        category: "audit",
+        source: "storage",
+        actor,
+        palletId,
+        eventId: pallet.eventId ?? undefined,
+        message: adminOverride
+          ? "Pallet unlocked with admin override"
+          : "Pallet unlocked",
+        details: {
+          previousLockedBy: pallet.lockedBy,
+          adminOverride,
+          simulatedAuthorization: adminOverride,
+        },
+      },
+      client,
+    );
+
+    await client.query("COMMIT");
+    return toPalletLockState(unlocked);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
