@@ -4,16 +4,17 @@ import {
   findAgvById,
   dispatchAgvTransaction,
   completeAgvTransaction,
-    updateAgvBatteryTransaction,
-    setAgvChargingTransaction,
-updateAgvHeartbeatTransaction,
-checkAgvHeartbeats,
-setAgvErrorTransaction,
-recoverAgvTransaction,
+  updateAgvBatteryTransaction,
+  setAgvChargingTransaction,
+  updateAgvHeartbeatTransaction,
+  checkAgvHeartbeats,
+  setAgvErrorTransaction,
+  recoverAgvTransaction,
 } from "./agv.repository.js";
 
 import type { AgvState } from "./agv.types.js";
 import { HttpError } from "../../shared/errors.js";
+import type { PoolClient } from "pg";
 
 export async function getAllAgvs(): Promise<AgvState[]> {
   return findAllAgvs();
@@ -33,6 +34,7 @@ export interface DispatchRequest {
 
 export async function dispatchAgv(
   input: DispatchRequest,
+  transactionClient?: PoolClient,
 ): Promise<AgvState> {
   if (
     typeof input.palletId !== "string" ||
@@ -56,11 +58,14 @@ export async function dispatchAgv(
     throw new HttpError(400, "Invalid AGV ID");
   }
 
-  return dispatchAgvTransaction({
-    palletId: input.palletId.trim(),
-    actor: input.actor.trim(),
-    agvId: input.agvId,
-  });
+  return dispatchAgvTransaction(
+    {
+      palletId: input.palletId.trim(),
+      actor: input.actor.trim(),
+      agvId: input.agvId,
+    },
+    transactionClient,
+  );
 }
 
 

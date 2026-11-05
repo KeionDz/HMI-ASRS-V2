@@ -2,6 +2,7 @@ import { HttpError } from "../../shared/errors.js";
 import { log } from "../../shared/logger.js";
 import { pool } from "../../db/pool.js";
 import type { AgvState, AgvStatus } from "./agv.types.js";
+import type { PoolClient } from "pg";
 
 interface AgvRow {
   id: string;
@@ -61,11 +62,15 @@ export interface AgvDispatchInput {
 
 export async function dispatchAgvTransaction(
   input: AgvDispatchInput,
+  transactionClient?: PoolClient,
 ): Promise<AgvState> {
-  const client = await pool.connect();
+  const client = transactionClient ?? await pool.connect();
+  const ownsTransaction = transactionClient === undefined;
 
   try {
-    await client.query("BEGIN");
+    if (ownsTransaction) {
+      await client.query("BEGIN");
+    }
 
     // Lock the pallet first to prevent duplicate assignments.
     const palletResult = await client.query<{
@@ -133,6 +138,9 @@ if (existingAssignment.rows.length > 0) {
              AND current_pallet_id IS NULL
              AND battery_level >= 20
              AND heartbeat_alert_active = false
+             AND last_heartbeat IS NOT NULL
+             AND last_heartbeat >=
+                 CURRENT_TIMESTAMP - INTERVAL '60 seconds'
            ORDER BY battery_level DESC, id ASC
            LIMIT 1
            FOR UPDATE SKIP LOCKED`,
@@ -165,6 +173,24 @@ if (existingAssignment.rows.length > 0) {
       throw new HttpError(409, "AGV heartbeat alert is active");
     }
 
+    const heartbeat = await client.query<{ fresh: boolean }>(
+      `SELECT (
+         last_heartbeat IS NOT NULL
+         AND last_heartbeat >=
+           CURRENT_TIMESTAMP - INTERVAL '60 seconds'
+       ) AS fresh
+       FROM agv_state
+       WHERE id = $1`,
+      [agv.id],
+    );
+
+    if (heartbeat.rows[0]?.fresh !== true) {
+      throw new HttpError(
+        409,
+        "AGV heartbeat is missing or stale",
+      );
+    }
+
     const updated = await client.query<AgvRow>(
       `UPDATE agv_state
        SET status = 'in_progress',
@@ -194,14 +220,21 @@ if (existingAssignment.rows.length > 0) {
       client,
     );
 
-    await client.query("COMMIT");
+       if (ownsTransaction) {
+      await client.query("COMMIT");
+    }
 
     return mapAgvRow(updated.rows[0]!);
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (ownsTransaction) {
+      await client.query("ROLLBACK");
+    }
+
     throw error;
   } finally {
-    client.release();
+    if (ownsTransaction) {
+      client.release();
+    }
   }
 }
 
