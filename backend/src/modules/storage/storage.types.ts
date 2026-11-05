@@ -31,3 +31,13 @@ export interface StorageFilters {
   level?: number;
   status?: StorageStatus;
 }
+
+export interface StoragePalletState {
+  id: string;
+  eventId: string | null;
+  locked: boolean;
+}
+
+export interface PalletContentUpdate extends PalletContent {
+  palletId: string;
+}
