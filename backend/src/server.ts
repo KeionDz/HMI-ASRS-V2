@@ -4,10 +4,12 @@ import { startLogRetentionJob } from "./modules/logs/logs.service.js";
 import { startScissorLiftMonitor } from "./modules/scissor-lift/scissor-lift.monitor.js";
 import { startAgvMonitor } from "./modules/agv/agv.monitor.js";
 import { startAssetsMqtt } from "./modules/assets/assets.mqtt.js";
+import { startScheduleMonitor } from "./modules/schedule/schedule.monitor.js";
 
 startScissorLiftMonitor();
 startAgvMonitor();
 startAssetsMqtt();
+startScheduleMonitor();
 
 app.listen(env.PORT, () => {
   console.log(`API running at http://localhost:${env.PORT}`);
