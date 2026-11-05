@@ -43,3 +43,9 @@ export function validatePalletRemoval(
     throw new HttpError(409, "pallet is locked");
   }
 }
+
+export function validateChecklistEdit(event: AssignmentEvent): void {
+  if (event.status === "completed") {
+    throw new HttpError(409, "cannot edit a completed event checklist");
+  }
+}
