@@ -537,8 +537,7 @@ export async function checkAgvHeartbeats(
       `UPDATE agv_state
        SET heartbeat_alert_active = true,
            updated_at = CURRENT_TIMESTAMP
-       WHERE last_heartbeat IS NOT NULL
-         AND last_heartbeat <
+       WHERE COALESCE(last_heartbeat, heartbeat_started_at) <
              CURRENT_TIMESTAMP - ($1 * INTERVAL '1 second')
          AND heartbeat_alert_active = false
        RETURNING id`,
