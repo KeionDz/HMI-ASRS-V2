@@ -18,6 +18,11 @@ export interface PalletAssignment {
   eventId: string | null;
 }
 
+export interface ReleasedPalletAssignment {
+  palletId: string;
+  eventId: string;
+}
+
 export interface AssignmentEvent {
   id: string;
   status: EventStatus;
