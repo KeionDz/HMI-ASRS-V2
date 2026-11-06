@@ -18,5 +18,4 @@ app.listen(env.PORT, () => {
   startLogRetentionJob();
   startEventAutoUnassignmentJob();
   startEventCsvIngestionJob();
-  startScissorLiftMonitor();
 });

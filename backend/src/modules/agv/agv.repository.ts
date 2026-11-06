@@ -12,6 +12,7 @@ interface AgvRow {
   destination: string | null;
   last_heartbeat: Date | null;
   heartbeat_alert_active: boolean;
+  reserved_process_run_id: number | null;
   updated_at: Date;
 }
 
@@ -136,6 +137,7 @@ if (existingAssignment.rows.length > 0) {
            FROM agv_state
            WHERE status = 'idle'
              AND current_pallet_id IS NULL
+             AND reserved_process_run_id IS NULL
              AND battery_level >= 20
              AND heartbeat_alert_active = false
              AND last_heartbeat IS NOT NULL
@@ -155,6 +157,13 @@ if (existingAssignment.rows.length > 0) {
         input.agvId
           ? "AGV not found"
           : "No available AGV",
+      );
+    }
+
+    if (agv.reserved_process_run_id !== null) {
+      throw new HttpError(
+        409,
+        "AGV is reserved by an active process run",
       );
     }
 

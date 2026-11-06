@@ -1,4 +1,4 @@
-import { getAgvById, getAllAgvs } from "../agv/agv.service.js";
+import type { PoolClient } from "pg";
 import {
   getStatus,
   moveLift,
@@ -21,22 +21,59 @@ import type {
   ProcessRun,
 } from "./process.types.js";
 
-async function chooseAgv(run: ProcessRun): Promise<string> {
-  const choices = run.requestedAgvId
-    ? [await getAgvById(run.requestedAgvId)].filter(
-        (agv) => agv !== null,
-      )
-    : await getAllAgvs();
-  const agv = choices
-    .filter(
-      (item) =>
-        item.status === "idle" &&
-        item.batteryLevel >= 20 &&
-        !item.heartbeatAlertActive,
-    )
-    .sort((a, b) => b.batteryLevel - a.batteryLevel)[0];
+async function chooseAgv(
+  run: ProcessRun,
+  client: PoolClient,
+): Promise<string> {
+  const result = await client.query<{ id: string }>(
+    `SELECT id
+     FROM agv_state
+     WHERE status = 'idle'
+       AND current_pallet_id IS NULL
+       AND battery_level >= 20
+       AND heartbeat_alert_active = false
+       AND last_heartbeat IS NOT NULL
+       AND last_heartbeat >=
+           CURRENT_TIMESTAMP - INTERVAL '60 seconds'
+       AND (
+         reserved_process_run_id IS NULL
+         OR reserved_process_run_id = $1
+       )
+       AND ($2::text IS NULL OR id = $2)
+       AND (
+         reserved_process_run_id = $1
+         OR NOT EXISTS (
+           SELECT 1
+           FROM agv_state
+           WHERE reserved_process_run_id = $1
+         )
+       )
+     ORDER BY
+       (reserved_process_run_id = $1) DESC NULLS LAST,
+       battery_level DESC,
+       id ASC
+     LIMIT 1
+     FOR UPDATE SKIP LOCKED`,
+    [run.id, run.requestedAgvId],
+  );
 
-  if (!agv) throw new HttpError(409, "No simulated AGV is available");
+  const agv = result.rows[0];
+
+  if (!agv) {
+    throw new HttpError(
+      409,
+      "No available AGV with a fresh heartbeat for this process",
+    );
+  }
+
+  await client.query(
+    `UPDATE agv_state
+     SET reserved_process_run_id = $1,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2`,
+    [run.id, agv.id],
+  );
+
   return agv.id;
 }
 
@@ -44,11 +81,11 @@ async function performSimulatedStep(
   run: ProcessRun,
   pallet: ProcessPallet,
   actor: string,
+  client: PoolClient,
 ): Promise<{ agvId?: string }> {
   switch (pallet.currentStep) {
     case "agv_dispatched":
-      // shortcut: AGV dispatch rejects event pallets; use AGV state until that contract changes.
-      return { agvId: await chooseAgv(run) };
+      return { agvId: await chooseAgv(run, client) };
     case "lift_up": {
       const lift = await getStatus();
       if (lift.position !== "upper") await moveLift("up", actor);
@@ -83,8 +120,11 @@ export function continueProcessRun(
   runId: number,
   actor: string,
 ): Promise<ProcessRun> {
-  return advanceProcessRunTransaction(runId, actor, (run, pallet) =>
-    performSimulatedStep(run, pallet, actor),
+  return advanceProcessRunTransaction(
+    runId,
+    actor,
+    (run, pallet, client) =>
+      performSimulatedStep(run, pallet, actor, client),
   );
 }
 

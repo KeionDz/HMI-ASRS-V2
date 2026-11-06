@@ -115,6 +115,19 @@ async function transaction<T>(
   }
 }
 
+async function releaseProcessAgvs(
+  client: PoolClient,
+  runId: number,
+): Promise<void> {
+  await client.query(
+    `UPDATE agv_state
+     SET reserved_process_run_id = NULL,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE reserved_process_run_id = $1`,
+    [runId],
+  );
+}
+
 export async function createProcessRunTransaction(
   input: CreateProcessRunInput,
 ): Promise<ProcessRun> {
@@ -272,6 +285,7 @@ export async function advanceProcessRunTransaction(
   performStep: (
     run: ProcessRun,
     pallet: ProcessPallet,
+    client: PoolClient,
   ) => Promise<{ agvId?: string }>,
 ): Promise<ProcessRun> {
   return transaction(async (client) => {
@@ -286,7 +300,7 @@ export async function advanceProcessRunTransaction(
       throw new HttpError(409, "Process has no active pallet step");
     }
 
-    const result = await performStep(run, pallet);
+    const result = await performStep(run, pallet, client);
     const completedStep = pallet.currentStep;
     const nextStep = nextProcessStep(run.mode, completedStep);
     if (nextStep) {
@@ -371,6 +385,7 @@ async function completePallet(
        WHERE id = $1`,
       [run.id],
     );
+    await releaseProcessAgvs(client, run.id);
   }
 }
 
@@ -391,6 +406,7 @@ export async function stopProcessRunTransaction(
               updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
       [runId],
     );
+    await releaseProcessAgvs(client, runId);
     if (run.currentPalletId) {
       await client.query(
         `UPDATE process_pallets SET status = 'stopped',
@@ -497,6 +513,7 @@ export async function reportPalletErrorTransaction(
          WHERE id = $1`,
         [runId],
       );
+      await releaseProcessAgvs(client, runId);
     }
 
     await log(
