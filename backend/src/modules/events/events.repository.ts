@@ -15,6 +15,7 @@ import type {
   EventChecklistItem,
   EventListItem,
   PalletAssignment,
+  ReleasedPalletAssignment,
 } from "./events.types.js";
 
 export async function findUpcomingEvents(): Promise<EventListItem[]> {
@@ -176,6 +177,82 @@ export async function removePalletAssignmentTransaction(
 
     await client.query("COMMIT");
     return { palletId, eventId: null };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function releaseExpiredPalletAssignments(
+  cutoff: Date,
+  actor: string,
+): Promise<ReleasedPalletAssignment[]> {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    const result = await client.query<ReleasedPalletAssignment>(
+      `
+        SELECT
+          p.id AS "palletId",
+          p.event_id AS "eventId"
+        FROM pallets p
+        JOIN events e ON e.id = p.event_id
+        WHERE e.event_date + e.event_time <= (
+          $1::timestamptz AT TIME ZONE current_setting('TIMEZONE')
+        )
+        ORDER BY p.id
+        FOR UPDATE OF p SKIP LOCKED
+      `,
+      [cutoff],
+    );
+
+    if (result.rows.length > 0) {
+      await client.query(
+        `
+          UPDATE pallets
+          SET event_id = NULL, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ANY($1::varchar[])
+        `,
+        [result.rows.map(({ palletId }) => palletId)],
+      );
+    }
+
+    for (const assignment of result.rows) {
+      await log(
+        {
+          level: "info",
+          category: "audit",
+          source: "events.auto-unassignment",
+          actor,
+          eventId: assignment.eventId,
+          palletId: assignment.palletId,
+          message: "Pallet automatically unassigned after event",
+          details: { cutoff: cutoff.toISOString() },
+        },
+        client,
+      );
+    }
+
+    await log(
+      {
+        level: "info",
+        category: "system",
+        source: "events.auto-unassignment",
+        actor,
+        message: "Event pallet auto-unassignment completed",
+        details: {
+          cutoff: cutoff.toISOString(),
+          releasedCount: result.rows.length,
+        },
+      },
+      client,
+    );
+
+    await client.query("COMMIT");
+    return result.rows;
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
