@@ -12,8 +12,13 @@ import {
   removePalletAssignment,
   saveChecklistItem,
 } from "./events.service.js";
+import { getEventIngestionStatus } from "./events.ingestion.js";
 
 const router = Router();
+
+router.get("/ingestion/status", async (_request, response) => {
+  response.json({ data: await getEventIngestionStatus() });
+});
 
 router.get("/", async (_request, response) => {
   response.json({ data: await listUpcomingEvents() });

@@ -34,6 +34,9 @@ Thumbs.db
 *.sln
 *.sw?
 
+# Runtime event CSV inbox and archives
+/data/event-inbox/
+
 
 !backend/src/modules/logs/
 !backend/src/modules/logs/**
