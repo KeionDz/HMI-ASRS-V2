@@ -37,6 +37,10 @@ export async function ingestReading(reading: Reading, actor: string): Promise<{ 
     const previous = result.rows[0];
     if (!previous) throw new HttpError(404, "BLE tag is not registered");
     const transition = previous.location !== reading.location;
+    const batteryChanged =
+      reading.batteryLevel !== undefined &&
+      reading.batteryLevel !== null &&
+      reading.batteryLevel !== previous.battery_level;
     const updated = await client.query<Row>(
       `UPDATE tracked_assets SET location=$2, battery_level=COALESCE($3,battery_level),
        last_seen_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING *`,
@@ -51,6 +55,24 @@ export async function ingestReading(reading: Reading, actor: string): Promise<{ 
       await log({ level: "info", category: "ingestion", source: "assets", actor,
         message: `Asset ${previous.id} reported ${reading.location}`,
         details: { assetId: previous.id, bleTag: reading.bleTag, readerId: reading.readerId ?? null, previousLocation: previous.location } }, client);
+    }
+    if (batteryChanged) {
+     await log(
+       {
+         level: "info",
+         category: "device",
+         source: "assets",
+         actor,
+         message: `Asset ${previous.id} battery level changed`,
+         details: {
+           assetId: previous.id,
+           bleTag: reading.bleTag,
+           previousBatteryLevel: previous.battery_level,
+           batteryLevel: reading.batteryLevel,
+         },
+       },
+       client,
+     );
     }
     await client.query("COMMIT");
     return { asset: map(updated.rows[0]!), transition };
