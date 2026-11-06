@@ -6,6 +6,7 @@ import { startAgvMonitor } from "./modules/agv/agv.monitor.js";
 import { startAssetsMqtt } from "./modules/assets/assets.mqtt.js";
 import { startScheduleMonitor } from "./modules/schedule/schedule.monitor.js";
 import { startEventAutoUnassignmentJob } from "./modules/events/events.auto-unassignment.js";
+import { startEventCsvIngestionJob } from "./modules/events/events.ingestion.js";
 
 startScissorLiftMonitor();
 startAgvMonitor();
@@ -16,5 +17,6 @@ app.listen(env.PORT, () => {
   console.log(`API running at http://localhost:${env.PORT}`);
   startLogRetentionJob();
   startEventAutoUnassignmentJob();
+  startEventCsvIngestionJob();
   startScissorLiftMonitor();
 });
