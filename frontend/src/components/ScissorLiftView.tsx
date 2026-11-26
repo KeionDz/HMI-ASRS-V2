@@ -19,6 +19,12 @@ export type ScissorLiftData = {
   levels: LiftLevel[]
 }
 
+type LiftFault = {
+  code: -1 | -2
+  title: string
+  message: string
+}
+
 type ScissorLiftViewProps = {
   data: ScissorLiftData
   commandPending?: boolean
@@ -39,6 +45,7 @@ export default function ScissorLiftView({
   onResume,
 }: ScissorLiftViewProps) {
   const [confirmation, setConfirmation] = useState<'stop' | 'resume' | null>(null)
+  const [acknowledgedFault, setAcknowledgedFault] = useState<string | null>(null)
   const highestLevel = Math.max(...data.levels.map((level) => level.id))
   const controlsEnabled = data.online && !data.emergencyStopped && !commandPending
   const canMoveUp = controlsEnabled && data.currentLevelId < highestLevel
@@ -48,6 +55,21 @@ export default function ScissorLiftView({
   const targetLevel = data.levels.find((level) => level.id === movingToLevelId)
   const movingDirection = movingToLevelId !== null && movingToLevelId > data.currentLevelId ? 'up' : 'down'
   const movementLabel = commandPending && targetLevel ? `Moving ${movingDirection} to ${targetLevel.name}…` : null
+  const activeFault: LiftFault | null = !data.online
+    ? {
+        code: -2,
+        title: 'Critical system error',
+        message: 'The scissor lift controller is offline. Operation is blocked; contact service before using the lift.',
+      }
+    : data.emergencyStopped
+      ? {
+          code: -1,
+          title: 'Safety warning',
+          message: 'Emergency stop is active. Lift movement is blocked until the area is checked and the lift is safely resumed.',
+        }
+      : null
+  const faultKey = activeFault ? `${activeFault.code}:${activeFault.message}` : null
+  const isFaultDialogOpen = activeFault !== null && acknowledgedFault !== faultKey
 
   const moveToLevel = (levelId: number) => {
     const level = data.levels.find((item) => item.id === levelId)
@@ -85,8 +107,11 @@ export default function ScissorLiftView({
             <span className={`lift-level-label lift-level-top${data.currentLevelId === highestLevel ? ' current' : ''}`}>STOREROOM <i /></span>
             <div className="shaft-track">
               <span className="shaft-line" />
-              <span className={`lift-platform${movementLabel ? ' moving' : ''}`} style={{ bottom: `${platformPosition}%`, transform: `translateY(${platformPosition}%)` }}>
-                <Layers3 size={25} />
+              <span className={`lift-platform${movementLabel ? ' moving' : ''}`} style={{ bottom: `calc(${platformPosition}% - ${platformPosition * 0.54}px)` }}>
+                <svg width="25" height="32" viewBox="0 0 24 32" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3.5" y="1.5" width="17" height="29" rx="2.5" />
+                  <path d="M12 2v29M8 8l2-2 2 2m4 8-2 2-2-2" />
+                </svg>
               </span>
             </div>
             <span className={`lift-level-label lift-level-home${data.currentLevelId === 0 ? ' current' : ''}`}>HOME <i /></span>
@@ -212,12 +237,37 @@ export default function ScissorLiftView({
                 className={`lift-confirm-submit ${confirmation}`}
                 onClick={() => {
                   if (confirmation === 'stop') onEmergencyStop()
-                  else onResume()
+                  else {
+                    onResume()
+                    setAcknowledgedFault(null)
+                  }
                   setConfirmation(null)
                 }}
               >
                 {confirmation === 'stop' ? 'Emergency Stop' : 'Resume Lift'}
               </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isFaultDialogOpen && activeFault && (
+        <div className="lift-confirm-backdrop lift-error-backdrop">
+          <section className="lift-confirm-dialog lift-error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="lift-error-title" aria-describedby="lift-error-message">
+            <header>
+              <span className="lift-confirm-icon stop"><OctagonAlert size={28} /></span>
+              <button type="button" onClick={() => setAcknowledgedFault(faultKey)} aria-label="Acknowledge and close error"><X size={22} /></button>
+            </header>
+            <span className="eyebrow">SCISSOR LIFT STATUS · ERROR</span>
+            <h2 id="lift-error-title">{activeFault.title}</h2>
+            <div className="lift-error-code">
+              <span>Status Code</span>
+              <strong>{activeFault.code}</strong>
+            </div>
+            <p id="lift-error-message">{activeFault.message}</p>
+            <p className="lift-error-note">Acknowledging closes this message only. The lift remains interlocked until the condition is resolved.</p>
+            <div className="lift-confirm-actions">
+              <button type="button" className="lift-confirm-submit stop" onClick={() => setAcknowledgedFault(faultKey)}>Acknowledge &amp; Close</button>
             </div>
           </section>
         </div>

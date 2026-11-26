@@ -16,7 +16,22 @@ type LogEntry = {
   details: Record<string, unknown>
 }
 
+type DiagnosticEntry = {
+  id: number
+  timestamp: string
+  protocol: 'http' | 'mqtt'
+  direction: 'request' | 'response' | 'inbound'
+  source: string
+  method?: string
+  path?: string
+  statusCode?: number
+  topic?: string
+  payload?: unknown
+  metadata?: Record<string, unknown>
+}
+
 type LogsViewProps = {
+  isActive: boolean
   onClose: () => void
 }
 
@@ -101,19 +116,25 @@ function downloadFile(filename: string, content: string, mimeType: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-function LogsView({ onClose }: LogsViewProps) {
+function LogsView({ isActive, onClose }: LogsViewProps) {
   const [entries, setEntries] = useState(createMockLogs)
+  const [activeTab, setActiveTab] = useState<'logs' | 'diagnostics'>('logs')
+  const [diagnosticEntries, setDiagnosticEntries] = useState<DiagnosticEntry[]>([])
+  const [diagnosticError, setDiagnosticError] = useState('')
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false)
+  const [diagnosticRefresh, setDiagnosticRefresh] = useState(0)
+  const [expandedDiagnosticId, setExpandedDiagnosticId] = useState<number | null>(null)
   const [fromDate, setFromDate] = useState(() => localDateInput(new Date(Date.now() - 90 * 86_400_000)))
   const [toDate, setToDate] = useState(() => localDateInput(new Date()))
   const [level, setLevel] = useState('all')
   const [category, setCategory] = useState('all')
   const [source, setSource] = useState('all')
   const [search, setSearch] = useState('')
-  const [isLive, setIsLive] = useState(false)
+  const [isLive, setIsLive] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isLive) return
+    if (!isActive || !isLive) return
     const timer = window.setInterval(() => {
       const timestamp = new Date().toISOString()
       setEntries((currentEntries) => [
@@ -131,7 +152,51 @@ function LogsView({ onClose }: LogsViewProps) {
       ])
     }, 15_000)
     return () => window.clearInterval(timer)
-  }, [isLive])
+  }, [isActive, isLive])
+
+  useEffect(() => {
+    if (activeTab !== 'diagnostics' || !import.meta.env.DEV) return
+
+    let active = true
+    let timer: number | undefined
+    const refreshDiagnostics = async () => {
+      let shouldPoll = false
+      try {
+        setDiagnosticsLoading(true)
+        const response = await fetch('/api/diagnostics')
+        if (!response.ok) {
+          throw new Error(`Backend returned ${response.status} ${response.statusText}`)
+        }
+
+        const result: { data: DiagnosticEntry[] } = await response.json()
+        if (active) {
+          setDiagnosticEntries(result.data)
+          setDiagnosticError('')
+          shouldPoll = true
+        }
+      } catch (error) {
+        if (active) {
+          setDiagnosticError(error instanceof Error ? error.message : 'Unknown diagnostics error')
+        }
+      } finally {
+        if (active) {
+          setDiagnosticsLoading(false)
+          if (shouldPoll) {
+            timer = window.setTimeout(() => {
+              void refreshDiagnostics()
+            }, 2_000)
+          }
+        }
+      }
+    }
+
+    void refreshDiagnostics()
+
+    return () => {
+      active = false
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [activeTab, diagnosticRefresh])
 
   const sources = useMemo(() => [...new Set(entries.map((entry) => entry.source))].sort(), [entries])
   const filteredEntries = useMemo(() => {
@@ -197,6 +262,106 @@ function LogsView({ onClose }: LogsViewProps) {
         </div>
       </header>
 
+      <nav className="logs-tabs" aria-label="Log views">
+        <button
+          type="button"
+          className={activeTab === 'logs' ? 'active' : ''}
+          onClick={() => setActiveTab('logs')}
+        >
+          Operational logs
+        </button>
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            className={activeTab === 'diagnostics' ? 'active' : ''}
+            onClick={() => setActiveTab('diagnostics')}
+          >
+            Developer diagnostics
+          </button>
+        )}
+      </nav>
+
+      {activeTab === 'diagnostics' && import.meta.env.DEV ? (
+        <section className="diagnostics-screen" aria-label="Developer diagnostics">
+          <header className="diagnostics-summary">
+            <div>
+              <strong>HTTP &amp; MQTT traffic</strong>
+              <span>Development only · local backend · sensitive fields redacted</span>
+            </div>
+            <div className="diagnostics-actions">
+              <span>{diagnosticsLoading ? 'Refreshing…' : `${diagnosticEntries.length} events`}</span>
+              <button type="button" onClick={() => setDiagnosticRefresh((current) => current + 1)} disabled={diagnosticsLoading}>
+                {diagnosticError ? 'Retry connection' : 'Refresh'}
+              </button>
+            </div>
+          </header>
+          {diagnosticError && (
+            <p className="diagnostics-error" role="alert">
+              Diagnostics unavailable: {diagnosticError}. Set DEV_DIAGNOSTICS_ENABLED=true in the backend environment and restart it.
+            </p>
+          )}
+          {diagnosticEntries.length === 0 ? (
+            diagnosticError ? null : (
+            <div className="logs-empty-state">
+              <Activity size={26} />
+              <strong>No captured traffic yet</strong>
+              <span>HTTP requests/responses and incoming MQTT messages appear here while the development feed is enabled.</span>
+            </div>
+            )
+          ) : (
+            <div className="logs-table-scroll">
+              <table className="logs-table diagnostics-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Protocol</th>
+                    <th>Direction</th>
+                    <th>System</th>
+                    <th>Request / Topic</th>
+                    <th>Status</th>
+                    <th aria-label="Payload" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {diagnosticEntries.map((entry) => (
+                    <Fragment key={entry.id}>
+                      <tr
+                        className={`logs-entry-row${expandedDiagnosticId === entry.id ? ' is-expanded' : ''}`}
+                        onClick={() => setExpandedDiagnosticId((current) => current === entry.id ? null : entry.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            setExpandedDiagnosticId((current) => current === entry.id ? null : entry.id)
+                          }
+                        }}
+                        tabIndex={0}
+                        aria-expanded={expandedDiagnosticId === entry.id}
+                      >
+                        <td><time dateTime={entry.timestamp}>{new Date(entry.timestamp).toLocaleTimeString([], { hour12: false })}<small>{new Date(entry.timestamp).toLocaleDateString()}</small></time></td>
+                        <td><span className="logs-category">{entry.protocol.toUpperCase()}</span></td>
+                        <td><span className={`logs-level ${entry.statusCode && entry.statusCode >= 400 ? 'level-error' : 'level-info'}`}>{entry.direction}</span></td>
+                        <td className="logs-source">{entry.source}</td>
+                        <td className="logs-message">{entry.protocol === 'http' ? `${entry.method} ${entry.path}` : entry.topic}</td>
+                        <td className="logs-actor">{entry.statusCode ?? (entry.metadata?.retained ? 'RETAINED' : '—')}</td>
+                        <td><span className={`logs-expand${expandedDiagnosticId === entry.id ? ' opened' : ''}`} aria-hidden="true">⌄</span></td>
+                      </tr>
+                      {expandedDiagnosticId === entry.id && (
+                        <tr className="logs-details-row">
+                          <td colSpan={7}>
+                            <div className="logs-details-heading">CAPTURED PAYLOAD <span>{entry.protocol.toUpperCase()} · {entry.id}</span></div>
+                            <pre>{JSON.stringify({ payload: entry.payload, metadata: entry.metadata }, null, 2)}</pre>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : (
+        <>
       <section className="logs-filter-panel" aria-label="Log filters">
         <label className="logs-filter-date">
           <span>Date from</span>
@@ -306,6 +471,8 @@ function LogsView({ onClose }: LogsViewProps) {
           </div>
         )}
       </div>
+        </>
+      )}
     </section>
   )
 }

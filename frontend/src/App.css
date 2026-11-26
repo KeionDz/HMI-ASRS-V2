@@ -114,8 +114,8 @@
 .lift-shaft { position: relative; display: flex; height: min(300px, 42vh); align-items: center; justify-content: center; }
 .shaft-track { position: relative; width: 50px; height: 100%; background: #111c2d; border: 2px solid #1a2940; border-radius: 10px; }
 .shaft-line { position: absolute; top: 10px; bottom: 10px; left: 50%; width: 2px; background: #1d314a; transform: translateX(-50%); }
-.lift-platform { position: absolute; left: 5px; display: grid; width: 36px; height: 54px; place-items: center; color: var(--cyan); background: #0b302d; border: 2px solid #00a995; border-radius: 9px; box-shadow: 0 0 14px #00c9b533; transition: bottom 260ms ease, transform 260ms ease; }
-.lift-platform.moving { transition-duration: 2s; }
+.lift-platform { position: absolute; left: 5px; display: grid; width: 36px; height: 54px; place-items: center; color: var(--cyan); background: #0b302d; border: 2px solid #00a995; border-radius: 9px; box-shadow: 0 0 14px #00c9b533; transition: bottom 3s cubic-bezier(.45,0,.55,1); }
+.lift-platform.moving { transition: bottom 3s cubic-bezier(.45,0,.55,1); }
 .lift-level-label { position: absolute; left: -84px; display: flex; width: 80px; align-items: center; justify-content: flex-end; gap: 7px; color: #526d88; font: 9px 'Cascadia Code', Consolas, monospace; }
 .lift-level-label i { width: 14px; height: 2px; background: currentColor; }
 .lift-level-top { top: 6px; }
@@ -144,6 +144,12 @@
 .lift-confirm-cancel { color: #c5d4e3; background: #1a2a42; border: 1px solid #304867; }
 .lift-confirm-submit.stop { color: #fff; background: #a51d2d; border: 2px solid #ef4d53; }
 .lift-confirm-submit.resume { color: #fff; background: #11633f; border: 2px solid #19a864; }
+.lift-error-backdrop { z-index: 1250; }
+.lift-error-code { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 14px; padding: 14px 16px; background: #1a2a42; border: 1px solid #304867; border-radius: 10px; }
+.lift-error-code span { color: #91a8c1; font: 10px 'Cascadia Code', Consolas, monospace; text-transform: uppercase; }
+.lift-error-code strong { color: #ff7479; font: 700 20px 'Cascadia Code', Consolas, monospace; }
+.lift-error-dialog .lift-error-note { margin-top: 12px; color: #f2a51a; font-size: 12px; }
+.lift-error-dialog .lift-confirm-actions { grid-template-columns: 1fr; }
 .lift-readings > div { display: flex; min-width: 0; min-height: 60px; flex-direction: column; justify-content: center; gap: 7px; padding: 0 14px; overflow: hidden; background: #17243a; border: 1px solid #20324f; border-radius: 10px; }
 .lift-readings dt { color: #5b7591; font: 8px 'Cascadia Code', Consolas, monospace; letter-spacing: .5px; }
 .lift-readings dd { max-width: 100%; margin: 0; overflow: hidden; color: #b9cadb; font: 600 11px 'Cascadia Code', Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
@@ -738,4 +744,105 @@ button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  .lift-platform { transition-duration: 3s !important; }
+}
+
+.equipment-screen { min-height: 0; flex: 1 1 0%; overflow: auto; }
+.equipment-workspace { display: grid; height: 100%; min-height: 620px; flex: 0 0 auto; grid-template-columns: minmax(260px, .75fr) minmax(0, 1.55fr); overflow: auto; background: #080f1b; }
+.equipment-door-panel { display: flex; min-width: 0; min-height: 620px; flex-direction: column; padding: 28px 22px; background: #0c1524; border-right: 1px solid var(--line); }
+.equipment-panel-heading { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+.equipment-panel-heading .eyebrow { grid-column: 1 / -1; }
+.equipment-panel-heading h2 { margin: 0; color: #f0f8ff; font-size: 19px; }
+.equipment-state { display: inline-flex; align-items: center; gap: 7px; color: var(--amber); font: 10px 'Cascadia Code', Consolas, monospace; }
+.equipment-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 8px #f2a51a66; }
+.equipment-state.open { color: var(--green); }
+.equipment-state.open i { background: var(--green); box-shadow: 0 0 8px #13c87866; }
+.shutter-illustration { display: flex; height: 280px; flex-direction: column; justify-content: flex-end; margin: 38px 0 24px; }
+.shutter-frame { position: relative; height: 240px; overflow: hidden; background: linear-gradient(180deg, #10243a, #172f43); border: 8px solid #263d55; border-bottom-width: 0; border-radius: 12px 12px 0 0; box-shadow: inset 0 0 35px #06101d99; }
+.shutter-curtain { position: absolute; z-index: 1; top: 0; right: 8px; left: 8px; display: grid; height: 100%; grid-template-rows: repeat(8, 1fr); transition: transform 900ms cubic-bezier(.22,.72,.24,1); }
+.shutter-curtain span { background: linear-gradient(180deg, #4a6781 0%, #243a50 48%, #192b3d 52%, #354e65 100%); border-bottom: 1px solid #657b8d; }
+.shutter-illustration.open .shutter-curtain { transform: translateY(-87.5%); }
+.shutter-opening { position: absolute; inset: 0; background: linear-gradient(180deg, #173b42 0%, #193644 100%); }
+.shutter-floor { height: 8px; background: #536d83; border-radius: 0 0 3px 3px; box-shadow: 0 8px 18px #0005; }
+.equipment-description { margin: 0 0 20px; color: #91a8c1; font-size: 12px; line-height: 1.6; }
+.shutter-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.shutter-controls button { display: flex; min-height: 52px; align-items: center; justify-content: center; gap: 8px; color: #d7e5f2; background: #17243a; border: 1px solid #2b4562; border-radius: 9px; font-size: 11px; font-weight: 650; cursor: pointer; }
+.shutter-controls button:hover:not(:disabled) { color: var(--cyan); border-color: var(--cyan); }
+.shutter-controls button:disabled { opacity: .4; cursor: not-allowed; }
+.equipment-demo-note { margin: auto 0 0; padding-top: 24px; color: #536d89; font: 8px 'Cascadia Code', Consolas, monospace; letter-spacing: .45px; text-align: center; }
+.equipment-workspace > .lift-workspace { min-height: 620px; grid-template-columns: minmax(0, 1fr) clamp(230px, 19vw, 310px); overflow: auto; }
+.equipment-workspace > .lift-workspace .lift-stage { gap: 14px; padding: 30px 16px 24px; }
+.equipment-workspace > .lift-workspace .lift-visual { grid-template-columns: 64px 105px 64px; gap: 10px; }
+.equipment-workspace > .lift-workspace .lift-direction { width: 64px; height: 64px; }
+.equipment-workspace > .lift-workspace .lift-shaft { height: min(270px, 40vh); }
+.equipment-workspace > .lift-workspace .lift-level-label { left: -74px; width: 70px; }
+.equipment-workspace > .lift-workspace .lift-safety-controls { gap: 8px; }
+.equipment-workspace > .lift-workspace .lift-safety-controls button { min-height: 54px; padding: 0 8px; font-size: 9px; }
+.equipment-workspace > .lift-workspace .lift-readings { gap: 7px; }
+.equipment-workspace > .lift-workspace .lift-readings > div { padding: 0 8px; }
+.equipment-workspace > .lift-workspace .lift-control-content { gap: 10px; padding: 14px; }
+.equipment-workspace > .lift-workspace .lift-card { padding: 16px 14px; }
+.equipment-workspace > .lift-workspace .lift-level-options button { min-height: 48px; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 7px; padding: 0 8px; }
+.equipment-workspace > .lift-workspace .lift-level-options button > span { width: 30px; height: 30px; }
+.transaction-backdrop { position: fixed; z-index: 1200; inset: 0; display: grid; place-items: center; padding: 20px; background: #030914cc; backdrop-filter: blur(5px); }
+.transaction-dialog { width: min(100%, 480px); padding: 25px; color: #dce8f4; background: #121e31; border: 1px solid #304867; border-radius: 17px; box-shadow: 0 24px 80px #000a; animation: panel-in 160ms ease-out; }
+.transaction-dialog > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.transaction-dialog > header button { display: grid; width: 40px; height: 40px; place-items: center; color: #91a8c1; background: #1a2a42; border: 1px solid #2a405f; border-radius: 9px; cursor: pointer; }
+.transaction-status-icon { display: grid; width: 48px; height: 48px; place-items: center; background: #123641; border: 1px solid #176b68; border-radius: 13px; }
+.transaction-status-icon > span { width: 10px; height: 10px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+.transaction-status-icon.complete { color: #51dda0; background: #103625; border-color: #24724b; }
+.transaction-dialog > .eyebrow { color: var(--cyan); }
+.transaction-dialog h2 { margin: 8px 0; color: #f0f8ff; font-size: 21px; }
+.transaction-dialog > p { margin: 0; color: #91a8c1; font-size: 13px; line-height: 1.6; }
+.transaction-progress { margin-top: 24px; }
+.transaction-progress-track { height: 6px; overflow: hidden; background: #20324a; border-radius: 99px; }
+.transaction-progress-track span { display: block; height: 100%; background: var(--cyan); border-radius: inherit; transition: width 250ms ease; }
+.transaction-progress ol { display: grid; gap: 11px; margin: 17px 0 0; padding: 0; list-style: none; }
+.transaction-progress li { display: flex; align-items: center; gap: 10px; color: #637d99; font-size: 12px; }
+.transaction-progress li > span { display: grid; width: 22px; height: 22px; flex: 0 0 22px; place-items: center; border: 1px solid #344a64; border-radius: 50%; font: 10px 'Cascadia Code', Consolas, monospace; }
+.transaction-progress li.reached { color: #d7e5f2; }
+.transaction-progress li.reached > span { color: #071b1c; background: var(--cyan); border-color: var(--cyan); }
+.transaction-auto-note { margin: 14px 0 0; color: #637d99; font-size: 10px; }
+.transaction-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 26px; }
+.transaction-actions button { min-width: 112px; min-height: 46px; padding: 0 16px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.transaction-secondary { color: #c5d4e3; background: #1a2a42; border: 1px solid #304867; }
+.transaction-primary { color: #061c1a; background: var(--cyan); border: 1px solid #00a995; }
+.transaction-primary:hover { filter: brightness(1.12); }
+.day-mode .equipment-workspace, .day-mode .equipment-door-panel { background: #edf3f7; }
+.day-mode .equipment-panel-heading h2 { color: #203346; }
+.day-mode .equipment-description { color: #5f778d; }
+.day-mode .shutter-controls button { color: #304a60; background: #e2ebf1; }
+.day-mode .transaction-dialog { color: #203346; background: #f3f7fa; border-color: #bdcbd6; }
+.day-mode .transaction-dialog h2 { color: #203346; }
+.day-mode .transaction-dialog > p { color: #5f778d; }
+.day-mode .transaction-progress li.reached { color: #304a60; }
+
+@media (max-width: 1100px) {
+  .equipment-workspace { grid-template-columns: minmax(230px, .72fr) minmax(0, 1.28fr); }
+  .equipment-workspace > .lift-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; overflow: visible; }
+  .equipment-workspace > .lift-workspace .lift-stage { min-height: 600px; }
+  .equipment-workspace > .lift-workspace .lift-control-panel { overflow: visible; border-top: 1px solid var(--line); border-left: 0; }
+}
+
+@media (max-width: 850px) {
+  .equipment-workspace { display: flex; flex-direction: column; overflow: visible; }
+  .equipment-door-panel { min-height: 520px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .equipment-workspace > .lift-workspace { display: flex; flex-direction: column; overflow: visible; }
+}
+
+@media (max-width: 600px) {
+  .equipment-dashboard-body { flex: 0 0 auto; }
+  .equipment-dashboard-body .equipment-screen { flex: 0 0 auto; overflow: visible; }
+  .equipment-dashboard-body .equipment-workspace { height: auto; min-height: 0; overflow: visible; }
+  .equipment-dashboard-body .lift-workspace { flex: 0 0 auto; }
+  .equipment-door-panel { min-height: 500px; padding: 24px 16px; }
+  .equipment-workspace > .lift-workspace .lift-stage { min-height: 580px; flex: 0 0 580px; }
+  .transaction-dialog { padding: 20px; }
+  .transaction-dialog h2 { font-size: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lift-platform,
+  .shutter-curtain,
+  .transaction-progress-track span { transition-duration: .01ms !important; }
 }

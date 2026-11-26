@@ -7,6 +7,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
+import TransactionDialog from './TransactionDialog'
 import './StorageView.css'
 
 type SlotStatus = 'available' | 'occupied' | 'post-event' | 'retrieved'
@@ -143,6 +144,12 @@ export default function StorageView() {
   const [loadItems, setLoadItems] = useState('')
   const [loadWeight, setLoadWeight] = useState('')
   const [loadDescription, setLoadDescription] = useState('')
+  const [pendingLoad, setPendingLoad] = useState<{
+    items: number
+    weight: number
+    description: string
+    eventId: string | null
+  } | null>(null)
   const [confirmUnassign, setConfirmUnassign] = useState(false)
   const [notice, setNotice] = useState('')
 
@@ -188,7 +195,7 @@ export default function StorageView() {
     )
   }
 
-  function loadPallet() {
+  function prepareLoad() {
     if (!selected || selected.status !== 'available') return
 
     const items = Number(loadItems)
@@ -204,14 +211,23 @@ export default function StorageView() {
       return
     }
 
-    updateSlot(selected.id, {
-      status: 'occupied',
+    setPendingLoad({
       items,
       weight,
       eventId: eventContext || null,
       description: loadDescription.trim(),
     })
+  }
 
+  function completeLoad() {
+    if (!selected || !pendingLoad || selected.status !== 'available') return
+
+    updateSlot(selected.id, {
+      status: 'occupied',
+      ...pendingLoad,
+    })
+
+    setPendingLoad(null)
     setManageOpen(false)
     setNotice('Demo pallet loaded. No hardware command sent.')
     setLoadItems('')
@@ -453,7 +469,7 @@ export default function StorageView() {
                     <button
                       type="button"
                       className="st-load-btn"
-                      onClick={loadPallet}
+                      onClick={prepareLoad}
                     >
                       <Upload size={15} />
                       Load Pallet
@@ -508,6 +524,17 @@ export default function StorageView() {
           </div>
         )}
       </aside>
+
+      {pendingLoad && selected && (
+        <TransactionDialog
+          title="Load pallet into storage?"
+          description={`Confirm loading ${pendingLoad.items} items (${pendingLoad.weight} kg) into ${selected.id}.`}
+          confirmLabel="load pallet"
+          steps={['Load request accepted', 'Pallet loading into storage', 'Pallet secured in storage']}
+          onComplete={completeLoad}
+          onClose={() => setPendingLoad(null)}
+        />
+      )}
 
       {confirmUnassign && selected && (
         <div className="st-modal-backdrop">

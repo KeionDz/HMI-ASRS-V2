@@ -4,6 +4,24 @@
 .logs-page-heading h1 { margin: 8px 0 3px; color: var(--text); font-size: 24px; line-height: 1.15; }
 .logs-page-heading p { margin: 0; color: var(--muted); font-size: 12px; }
 .logs-heading-actions { display: flex; align-items: center; gap: 10px; }
+.logs-tabs { display: flex; min-height: 48px; align-items: stretch; gap: 8px; padding: 0 clamp(22px, 3.2vw, 52px); background: #0e1828; border-bottom: 1px solid var(--line); }
+.logs-tabs button { position: relative; padding: 0 14px; color: var(--muted); background: transparent; border: 0; font-size: 11px; font-weight: 650; cursor: pointer; }
+.logs-tabs button:hover, .logs-tabs button.active { color: var(--cyan); }
+.logs-tabs button.active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; content: ''; background: var(--cyan); }
+.diagnostics-screen { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; overflow: hidden; }
+.diagnostics-summary { display: flex; min-height: 66px; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 16px; padding: 12px clamp(22px, 3.2vw, 52px); color: var(--muted); background: #0c1726; border-bottom: 1px solid var(--line); font: 10px 'Cascadia Code', Consolas, monospace; }
+.diagnostics-summary > div { display: flex; flex-direction: column; gap: 5px; }
+.diagnostics-summary .diagnostics-actions { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+.diagnostics-actions button { min-height: 34px; padding: 0 11px; color: var(--cyan); background: #102a36; border: 1px solid #1e5860; border-radius: 6px; font: 10px 'Cascadia Code', Consolas, monospace; cursor: pointer; }
+.diagnostics-actions button:disabled { opacity: .55; cursor: wait; }
+.diagnostics-summary strong { color: var(--text); font: 650 12px system-ui, sans-serif; }
+.diagnostics-summary span { color: var(--faint); }
+.diagnostics-error { flex: 0 0 auto; margin: 14px clamp(22px, 3.2vw, 52px); padding: 12px 14px; color: #ffb1b5; background: #35161d; border: 1px solid #78313a; border-radius: 7px; line-height: 1.5; }
+.diagnostics-table th:nth-child(1) { width: 13%; }
+.diagnostics-table th:nth-child(2) { width: 9%; }
+.diagnostics-table th:nth-child(3) { width: 11%; }
+.diagnostics-table th:nth-child(4) { width: 16%; }
+.diagnostics-table th:nth-child(6) { width: 10%; }
 .logs-live-button, .logs-close { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; padding: 0 15px; color: var(--muted); background: var(--surface-raised); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .logs-live-button:hover, .logs-close:hover { color: var(--text); border-color: #426183; }
 .logs-live-button.is-live { color: var(--green); background: #0d3026; border-color: #17684a; }
@@ -61,6 +79,10 @@
 .logs-empty-state strong { color: var(--text); font-size: 15px; }
 .logs-empty-state span { font-size: 12px; }
 .day-mode .logs-filter-panel { background: #e2ebf1; }
+.day-mode .logs-tabs { background: #e2ebf1; }
+.day-mode .diagnostics-summary { background: #e2ebf1; border-bottom-color: #ccd9e2; }
+.day-mode .diagnostics-summary strong { color: #203346; }
+.day-mode .diagnostics-error { color: #78262e; background: #f7e0e2; border-color: #e2aeb3; }
 .day-mode .logs-entry-row:nth-child(even) { background: #e5edf3; }
 .day-mode .logs-entry-row:hover, .day-mode .logs-entry-row.is-expanded { background: #dce8f0; }
 .day-mode .logs-table td { border-bottom-color: #d6e0e7; }
@@ -86,6 +108,10 @@
   .logs-live-button svg, .logs-close svg { width: 15px; }
   .logs-close span { display: none; }
   .logs-filter-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 13px 14px; }
+  .logs-tabs { padding: 0 14px; }
+  .logs-tabs button { padding: 0 9px; font-size: 10px; }
+  .diagnostics-summary { padding: 12px 14px; }
+  .diagnostics-error { margin: 12px 14px; }
   .logs-filter-panel input, .logs-filter-panel select { height: 42px; font-size: 11px; }
   .logs-export { grid-column: span 2; }
   .logs-export > div button { flex: 1; }

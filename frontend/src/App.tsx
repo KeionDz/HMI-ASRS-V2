@@ -8,7 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
-  Layers3,
+  ArrowUpDown,
   Moon,
   ScrollText,
   Settings,
@@ -27,6 +27,7 @@ import ScheduleView, {
   type NewScheduleTask,
   type ScheduleTask,
 } from './components/ScheduleView'
+import ShutterDoorView from './components/ShutterDoorView'
 import ScissorLiftView, { type ScissorLiftData } from './components/ScissorLiftView'
 import StorageView from './components/StorageView'
 import mheLogoDark from './logos/mhe-logo-darkmode.png'
@@ -90,7 +91,7 @@ const events = [
 const navigation = [
   { label: 'Events', icon: Activity },
   { label: 'Storage', icon: Box },
-  { label: 'Scissor Lift', icon: Layers3 },
+  { label: 'Shutter + Lift', icon: ArrowUpDown },
   { label: 'AGV', icon: Zap },
   { label: 'Assets', icon: Wifi },
   { label: 'Schedule', icon: Clock3 },
@@ -110,10 +111,10 @@ const sectionCopy: Record<
     description:
       'Live pallet locations and available rack positions will appear here.',
   },
-  'Scissor Lift': {
-    title: 'Scissor Lift',
+  'Shutter + Lift': {
+    title: 'Shutter Door and Scissor Lift',
     description:
-      'Lift status, assignment, and service information will appear here.',
+      'Operate the shutter door and scissor lift from one equipment workspace.',
   },
   AGV: {
     title: 'AGV Fleet',
@@ -203,7 +204,7 @@ const initialLiftData: ScissorLiftData = {
   ],
 }
 
-const liftTravelDurationMs = 2000
+const liftTravelDurationMs = 3000
 
 const initialScheduleTasks: ScheduleTask[] = [
   {
@@ -415,9 +416,12 @@ function App() {
         <AdminView onClose={() => setSystemScreen('dashboard')} />
       </div>
       <div className="system-screen-host" hidden={systemScreen !== 'logs'}>
-        <LogsView onClose={() => setSystemScreen('dashboard')} />
+        <LogsView
+          isActive={systemScreen === 'logs'}
+          onClose={() => setSystemScreen('dashboard')}
+        />
       </div>
-      <div className="dashboard-body" hidden={systemScreen !== 'dashboard'}>
+      <div className={`dashboard-body${activeSection === 'Shutter + Lift' ? ' equipment-dashboard-body' : ''}`} hidden={systemScreen !== 'dashboard'}>
       {/* MAIN NAVIGATION */}
       <nav
         className="main-nav"
@@ -456,16 +460,19 @@ function App() {
       >
         <AgvView />
       </div>
-      <div className="screen-host" hidden={activeSection !== 'Scissor Lift'}>
-        <ScissorLiftView
-          data={liftData}
-          commandPending={liftTargetLevel !== null}
-          movingToLevelId={liftTargetLevel}
-          onMoveToLevel={moveLiftToLevel}
-          onRunCalibration={() => setDialog('Scissor Lift Calibration')}
-          onEmergencyStop={emergencyStopLift}
-          onResume={() => setLiftEmergencyStopped(false)}
-        />
+      <div className="screen-host equipment-screen" hidden={activeSection !== 'Shutter + Lift'}>
+        <div className="equipment-workspace">
+          <ShutterDoorView />
+          <ScissorLiftView
+            data={liftData}
+            commandPending={liftTargetLevel !== null}
+            movingToLevelId={liftTargetLevel}
+            onMoveToLevel={moveLiftToLevel}
+            onRunCalibration={() => setDialog('Scissor Lift Calibration')}
+            onEmergencyStop={emergencyStopLift}
+            onResume={() => setLiftEmergencyStopped(false)}
+          />
+        </div>
       </div>
 
       {/* EVENTS VIEW - NEW */}
@@ -494,7 +501,7 @@ function App() {
         activeSection !== 'Events' &&
         activeSection !== 'Storage' &&
         activeSection !== 'Schedule' &&
-        activeSection !== 'Scissor Lift' && (
+        activeSection !== 'Shutter + Lift' && (
           <section className="workspace">
             {/* EVENT SIDEBAR */}
             <aside className="event-rail">

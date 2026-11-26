@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BatteryCharging, Bot, MapPin, Shuffle, Zap } from 'lucide-react'
+import TransactionDialog from './TransactionDialog'
 
 type Robot = {
   id: string
@@ -21,6 +22,7 @@ export default function AgvView() {
   const [selectedBallroom, setSelectedBallroom] = useState<string | null>(null)
   const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null)
   const [dispatchMessage, setDispatchMessage] = useState('')
+  const [pendingDispatch, setPendingDispatch] = useState<{ robotId: string; robotName: string; ballroom: string } | null>(null)
 
   const dispatchRobot = () => {
     const robot = dispatchMode === 'auto'
@@ -29,10 +31,17 @@ export default function AgvView() {
 
     if (!robot || !selectedBallroom) return
 
-    setRobots((current) => current.map((item) => item.id === robot.id
-      ? { ...item, charging: false, inProgress: true, task: `1 pallet to ${selectedBallroom}` }
+    setPendingDispatch({ robotId: robot.id, robotName: robot.name, ballroom: selectedBallroom })
+  }
+
+  const completeDispatch = () => {
+    if (!pendingDispatch) return
+
+    setRobots((current) => current.map((item) => item.id === pendingDispatch.robotId
+      ? { ...item, charging: false, inProgress: true, task: `1 pallet to ${pendingDispatch.ballroom}` }
       : item))
-    setDispatchMessage(`${robot.name} assigned · 1 pallet to ${selectedBallroom}`)
+    setDispatchMessage(`${pendingDispatch.robotName} assigned · 1 pallet to ${pendingDispatch.ballroom}`)
+    setPendingDispatch(null)
   }
 
   const updateRobotStatus = (robotId: string) => {
@@ -107,6 +116,17 @@ export default function AgvView() {
           {['ASRS', 'Scissor Lift', 'AGV'].map((system) => <div className="health-row" key={system}><span><i />{system}</span><b>OK</b></div>)}
         </section>
       </aside>
+
+      {pendingDispatch && (
+        <TransactionDialog
+          title="Dispatch AGV?"
+          description={`Send ${pendingDispatch.robotName} to ${pendingDispatch.ballroom} with one pallet? This is a demo dispatch.`}
+          confirmLabel="dispatch AGV"
+          steps={['Dispatch request accepted', 'AGV is on the way', 'AGV arrived at the venue', 'Pallet run complete']}
+          onComplete={completeDispatch}
+          onClose={() => setPendingDispatch(null)}
+        />
+      )}
     </section>
   )
 }

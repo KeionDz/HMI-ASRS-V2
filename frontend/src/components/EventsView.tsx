@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   X,
 } from 'lucide-react'
+import TransactionDialog from './TransactionDialog'
 import './EventsView.css'
 
 type EventStatus = 'completed' | 'scheduled'
@@ -675,62 +676,14 @@ export default function EventsView() {
       </aside>
 
       {retrieveDialog && selected && selectedPallet && (
-        <div
-          className="ev-modal-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setRetrieveDialog(false)
-            }
-          }}
-        >
-          <section
-            className="ev-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Demo retrieval confirmation"
-          >
-            <header>
-              <h2>Retrieve to Venue — Demo</h2>
-
-              <button
-                type="button"
-                aria-label="Close"
-                onClick={() => setRetrieveDialog(false)}
-              >
-                <X size={20} />
-              </button>
-            </header>
-
-            <div className="ev-modal-body">
-              <p>
-                Simulate retrieval of{' '}
-                <strong>{selectedPallet.id}</strong> for{' '}
-                <strong>{selected.title}</strong>?
-              </p>
-
-              <p>
-                No equipment command will be sent.
-              </p>
-
-              <div className="ev-modal-actions">
-                <button
-                  type="button"
-                  onClick={() => setRetrieveDialog(false)}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  className="ev-confirm"
-                  onClick={confirmRetrieval}
-                >
-                  Confirm Demo
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
+        <TransactionDialog
+          title="Retrieve pallet to venue?"
+          description={`Confirm the demo retrieval of ${selectedPallet.id} for ${selected.title}. No equipment command will be sent.`}
+          confirmLabel="retrieve pallet"
+          steps={['Retrieval request accepted', 'Pallet retrieval in progress', 'AGV on the way to the venue', 'AGV arrived at the venue']}
+          onComplete={confirmRetrieval}
+          onClose={() => setRetrieveDialog(false)}
+        />
       )}
 
       {pinDialog && (
